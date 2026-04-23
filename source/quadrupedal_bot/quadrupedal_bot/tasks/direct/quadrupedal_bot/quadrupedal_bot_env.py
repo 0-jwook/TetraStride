@@ -7,6 +7,7 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import DirectRLEnv
+from isaaclab.sensors import ContactSensor
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
 from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
@@ -17,6 +18,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def __init__(self, cfg: QuadrupedalBotEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
+
+        # feet body IDs from contact sensor (4 foot links)
+        self._feet_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
@@ -30,11 +34,16 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
+        self.contact_sensor = ContactSensor(self.cfg.contact_sensor)
+
         spawn_ground_plane(prim_path="/World/ground", cfg=GroundPlaneCfg())
         self.scene.clone_environments(copy_from_source=False)
         if self.device == "cpu":
             self.scene.filter_collisions(global_prim_paths=[])
+
         self.scene.articulations["robot"] = self.robot
+        self.scene.sensors["contact_sensor"] = self.contact_sensor
+
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
@@ -77,10 +86,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
     # ------------------------------------------------------------------
 
     def _get_rewards(self) -> torch.Tensor:
+        # compute_first_contact: True when foot touches ground after being in air
+        first_contact = self.contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        last_air_time = self.contact_sensor.data.last_air_time[:, self._feet_ids]
+
         return compute_rewards(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_lin_vel,
             self.cfg.rew_scale_ang_vel,
+            self.cfg.rew_scale_air_time,
             self.cfg.rew_scale_lin_vel_z,
             self.cfg.rew_scale_ang_vel_xy,
             self.cfg.rew_scale_gravity,
@@ -96,6 +110,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.robot.data.applied_torque,
             self.actions,
             self._last_actions,
+            first_contact,
+            last_air_time,
             self.reset_terminated,
         )
 
@@ -135,7 +151,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
             *self.cfg.cmd_ang_vel_z_range
         )
 
-        # noise forces exploration of different initial states
         joint_pos = self.robot.data.default_joint_pos[env_ids]
         joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.1
         joint_vel = torch.randn_like(joint_pos) * 0.05
@@ -162,6 +177,7 @@ def compute_rewards(
     rew_scale_alive: float,
     rew_scale_lin_vel: float,
     rew_scale_ang_vel: float,
+    rew_scale_air_time: float,
     rew_scale_lin_vel_z: float,
     rew_scale_ang_vel_xy: float,
     rew_scale_gravity: float,
@@ -177,6 +193,8 @@ def compute_rewards(
     applied_torque: torch.Tensor,
     actions: torch.Tensor,
     last_actions: torch.Tensor,
+    first_contact: torch.Tensor,
+    last_air_time: torch.Tensor,
     reset_terminated: torch.Tensor,
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
@@ -186,6 +204,10 @@ def compute_rewards(
 
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
     rew_ang_vel = torch.exp(-4.0 * ang_vel_error) * rew_scale_ang_vel
+
+    # reward feet that lift for ~0.5s before landing (encourages trot gait)
+    moving = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
+    rew_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * rew_scale_air_time * moving
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
@@ -199,6 +221,7 @@ def compute_rewards(
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
+        + rew_air_time
         + rew_lin_vel_z
         + rew_ang_vel_xy
         + rew_gravity

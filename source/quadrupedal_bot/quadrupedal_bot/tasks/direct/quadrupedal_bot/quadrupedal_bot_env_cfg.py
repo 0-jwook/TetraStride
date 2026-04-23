@@ -1,6 +1,7 @@
 from isaaclab.assets import ArticulationCfg
 from isaaclab.envs import DirectRLEnvCfg
 from isaaclab.scene import InteractiveSceneCfg
+from isaaclab.sensors import ContactSensorCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.utils import configclass
 
@@ -26,6 +27,14 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- robot ---
     robot_cfg: ArticulationCfg = SPOT_MICRO_CFG.replace(prim_path="/World/envs/env_.*/Robot")
 
+    # --- contact sensor: all robot bodies registered, feet filtered via find_bodies() ---
+    contact_sensor: ContactSensorCfg = ContactSensorCfg(
+        prim_path="/World/envs/env_.*/Robot/.*",
+        history_length=3,
+        update_period=0.005,
+        track_air_time=True,
+    )
+
     # --- scene ---
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
@@ -44,6 +53,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 4.0
     rew_scale_ang_vel: float = 1.0
+    rew_scale_air_time: float = 2.0
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
     rew_scale_gravity: float = -1.0

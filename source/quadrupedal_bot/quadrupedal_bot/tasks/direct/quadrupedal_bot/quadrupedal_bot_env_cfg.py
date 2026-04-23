@@ -39,7 +39,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
     # --- action ---
-    action_scale: float = 0.5
+    action_scale: float = 0.8
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.5, 1.0)
@@ -61,4 +61,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
-    rew_scale_movement: float = 2.0     # doubled: stronger gradient signal at zero velocity
+    rew_scale_movement: float = 3.0     # strong gradient signal: reward any cmd-direction velocity

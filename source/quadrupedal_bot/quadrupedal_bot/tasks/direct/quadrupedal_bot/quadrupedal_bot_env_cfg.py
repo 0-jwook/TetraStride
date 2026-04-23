@@ -12,7 +12,7 @@ from .spot_micro_cfg import SPOT_MICRO_CFG
 class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- env timing ---
     decimation: int = 4
-    episode_length_s: float = 20.0
+    episode_length_s: float = 5.0
 
     # --- spaces ---
     # obs: lin_vel(3) + ang_vel(3) + proj_gravity(3) + commands(3)
@@ -51,7 +51,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- reward scales (legged_gym 기반) ---
     rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
-    rew_scale_lin_vel: float = 2.0     # exp(-e²/0.25), exponential tracking
+    rew_scale_lin_vel: float = 3.0     # exp(-e²/0.25), increased for stronger tracking signal
     rew_scale_ang_vel: float = 0.1     # reduced: prevent angular-vel standing optimum
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
@@ -61,4 +61,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
-    rew_scale_movement: float = 1.0     # linear bonus for any velocity in cmd direction
+    rew_scale_movement: float = 2.0     # doubled: stronger gradient signal at zero velocity

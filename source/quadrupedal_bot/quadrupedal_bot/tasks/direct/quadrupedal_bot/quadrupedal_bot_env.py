@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import torch
@@ -20,9 +21,13 @@ class QuadrupedalBotEnv(DirectRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
+        # foot body IDs for position lookup (robot body array, not sensor array)
+        self._foot_body_ids, _ = self.robot.find_bodies(".*foot_link")
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
+        # trot gait phase: each env has its own phase, randomized at reset
+        self._gait_phase = torch.zeros(self.num_envs, device=self.device)
 
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
@@ -49,6 +54,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
+        # advance trot gait clock at 1.5 Hz
+        self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
 
     def _apply_action(self) -> None:
         target = self.robot.data.default_joint_pos + self.actions * self.cfg.action_scale
@@ -71,6 +78,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 self.joint_pos - self.robot.data.default_joint_pos,  # [N, 12]
                 self.joint_vel,                                      # [N, 12]
                 self._last_actions,                                  # [N, 12]
+                torch.sin(self._gait_phase).unsqueeze(1),            # [N, 1]
+                torch.cos(self._gait_phase).unsqueeze(1),            # [N, 1]
             ],
             dim=-1,
         )
@@ -84,7 +93,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
     def _get_rewards(self) -> torch.Tensor:
         first_contact = self.contact_sensor.compute_first_contact(self.step_dt)[:, self._foot_ids]
         last_air_time = self.contact_sensor.data.last_air_time[:, self._foot_ids]
-        return compute_rewards(
+
+        base_rew = compute_rewards(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_lin_vel,
             self.cfg.rew_scale_ang_vel,
@@ -109,6 +119,20 @@ class QuadrupedalBotEnv(DirectRLEnv):
             last_air_time,
             first_contact,
         )
+
+        # trot gait reference reward: reward foot clearance during swing phase
+        # foot_body_ids assumed ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical)
+        foot_heights = self.robot.data.body_pos_w[:, self._foot_body_ids, 2]  # [N, 4]
+        phase_A = self._gait_phase                                  # FL(0) + RR(3) swing
+        phase_B = (self._gait_phase + math.pi) % (2.0 * math.pi)  # FR(1) + RL(2) swing
+        swing_A = (torch.sin(phase_A) > 0.0).float()
+        swing_B = (torch.sin(phase_B) > 0.0).float()
+        swing_mask = torch.stack([swing_A, swing_B, swing_B, swing_A], dim=1)
+        # reward 0-8cm clearance above ground during swing phase
+        foot_clearance = (foot_heights - 0.01).clamp(min=0.0, max=0.08)
+        rew_gait = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_gait
+
+        return (base_rew + rew_gait).clamp(min=0.0)
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -163,6 +187,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos[env_ids] = joint_pos
         self.joint_vel[env_ids] = joint_vel
         self._last_actions[env_ids] = 0.0
+        # randomize gait phase at reset to break synchronization
+        self._gait_phase[env_ids] = torch.zeros(n, device=self.device).uniform_(0.0, 2.0 * math.pi)
 
 
 # ------------------------------------------------------------------
@@ -206,7 +232,6 @@ def compute_rewards(
     rew_ang_vel = torch.exp(-ang_vel_error / 0.25) * rew_scale_ang_vel
 
     # movement bonus: proportional reward for any velocity along command direction
-    # provides nonzero gradient at zero velocity, breaking the standing local optimum
     cmd_dir = commands[:, :2] / (torch.norm(commands[:, :2], dim=1, keepdim=True).clamp(min=0.1))
     vel_proj = (root_lin_vel_b[:, :2] * cmd_dir).sum(dim=1).clamp(min=0.0, max=2.0)
     rew_movement = vel_proj * rew_scale_movement
@@ -219,8 +244,6 @@ def compute_rewards(
     rew_action_rate = torch.sum(torch.square(actions - last_actions), dim=1) * rew_scale_action_rate
     rew_termination = reset_terminated.float() * rew_scale_termination
 
-    # reward feet that just landed after being airborne > 0.1s (Spot Micro 크기 맞춤)
-    # only when there is a velocity command (legged_gym 방식)
     cmd_has_vel = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
     rew_air_time = torch.sum(
         (last_air_time - 0.1).clamp(min=0.0) * first_contact.float(), dim=1
@@ -240,5 +263,4 @@ def compute_rewards(
         + rew_termination
         + rew_air_time
     )
-    # clip at 0 to prevent negative rewards from destabilizing training (legged_gym: only_positive_rewards)
     return total.clamp(min=0.0)

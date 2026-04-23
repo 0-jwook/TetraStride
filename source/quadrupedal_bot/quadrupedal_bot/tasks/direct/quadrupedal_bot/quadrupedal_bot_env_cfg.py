@@ -16,9 +16,9 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- spaces ---
     # obs: lin_vel(3) + ang_vel(3) + proj_gravity(3) + commands(3)
-    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) = 48
+    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 50
     action_space: int = 12
-    observation_space: int = 48
+    observation_space: int = 50
     state_space: int = 0
 
     # --- simulation ---
@@ -62,3 +62,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 2.0     # linear gradient: reward any cmd-direction velocity
+    rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase

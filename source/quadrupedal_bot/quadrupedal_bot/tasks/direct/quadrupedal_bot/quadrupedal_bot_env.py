@@ -192,8 +192,10 @@ def compute_rewards(
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
-    lin_vel_error = torch.sum(torch.square(commands[:, :2] - root_lin_vel_b[:, :2]), dim=1)
-    rew_lin_vel = torch.exp(-4.0 * lin_vel_error) * rew_scale_lin_vel
+    # linear projection reward: 0 when standing, max when matching command speed (no local optimum)
+    cmd_speed_xy = torch.norm(commands[:, :2], dim=1).clamp(min=0.01)
+    projected_vel = (root_lin_vel_b[:, 0] * commands[:, 0] + root_lin_vel_b[:, 1] * commands[:, 1]) / cmd_speed_xy
+    rew_lin_vel = torch.minimum(projected_vel.clamp(min=0.0), cmd_speed_xy) * rew_scale_lin_vel
 
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
     rew_ang_vel = torch.exp(-4.0 * ang_vel_error) * rew_scale_ang_vel

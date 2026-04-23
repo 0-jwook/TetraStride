@@ -51,7 +51,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- reward scales ---
     rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 4.0
+    rew_scale_lin_vel: float = 6.0
     rew_scale_ang_vel: float = 1.0
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05

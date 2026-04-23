@@ -151,8 +151,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         root_state = self.robot.data.default_root_state[env_ids]
         root_state[:, :3] += self.scene.env_origins[env_ids]
-        # bootstrap locomotion: start each episode with a small random forward velocity
-        root_state[:, 7] = torch.rand(n, device=self.device) * 0.3
+        # bootstrap: start at full command velocity so reward signal is immediate and strong
+        root_state[:, 7] = self._commands[env_ids, 0]
+        root_state[:, 8] = self._commands[env_ids, 1]
 
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)

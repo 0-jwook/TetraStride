@@ -147,11 +147,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
 
         joint_pos = self.robot.data.default_joint_pos[env_ids]
-        joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.05
+        joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.2
         joint_vel = torch.zeros_like(joint_pos)
 
         root_state = self.robot.data.default_root_state[env_ids]
         root_state[:, :3] += self.scene.env_origins[env_ids]
+        # bootstrap: start at command velocity so robot must learn to maintain it
+        root_state[:, 7] = self._commands[env_ids, 0]
+        root_state[:, 8] = self._commands[env_ids, 1]
 
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)

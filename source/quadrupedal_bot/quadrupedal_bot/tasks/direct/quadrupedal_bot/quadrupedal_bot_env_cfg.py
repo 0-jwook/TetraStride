@@ -41,10 +41,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- action ---
     action_scale: float = 0.8
 
-    # --- velocity commands ---
-    cmd_lin_vel_x_range: tuple = (0.5, 1.0)
-    cmd_lin_vel_y_range: tuple = (-0.3, 0.3)
-    cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
+    # --- velocity commands (fixed: simplify task to "walk forward at 1.5 m/s") ---
+    cmd_lin_vel_x_range: tuple = (1.5, 1.5)
+    cmd_lin_vel_y_range: tuple = (0.0, 0.0)
+    cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
     # --- termination ---
     termination_height: float = 0.08

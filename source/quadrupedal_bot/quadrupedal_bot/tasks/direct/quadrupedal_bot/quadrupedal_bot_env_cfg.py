@@ -42,7 +42,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     action_scale: float = 0.5
 
     # --- velocity commands ---
-    cmd_lin_vel_x_range: tuple = (0.3, 0.8)
+    cmd_lin_vel_x_range: tuple = (0.5, 1.0)
     cmd_lin_vel_y_range: tuple = (-0.3, 0.3)
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
@@ -51,8 +51,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- reward scales (legged_gym 기반) ---
     rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
-    rew_scale_lin_vel: float = 2.0     # exp(-e²/0.25), legged_gym: 1.0~2.0
-    rew_scale_ang_vel: float = 0.5     # exp(-e²/0.25), legged_gym: 0.5
+    rew_scale_lin_vel: float = 2.0     # exp(-e²/0.1), sharp: standing@0.5cmd gives 8%
+    rew_scale_ang_vel: float = 0.5     # exp(-e²/0.1), sharp tracking
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
     rew_scale_gravity: float = -1.0
@@ -60,4 +60,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
-    rew_scale_air_time: float = 1.5     # legged_gym: 1.0~2.5
+    rew_scale_air_time: float = 6.0     # increased to strongly incentivize leg lifting

@@ -196,12 +196,12 @@ def compute_rewards(
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
-    # exponential tracking rewards (legged_gym standard, sigma=0.25)
+    # exponential tracking rewards — sigma=0.1 (sharp: standing gives <10% reward at cmd>=0.5)
     lin_vel_error = torch.sum(torch.square(commands[:, :2] - root_lin_vel_b[:, :2]), dim=1)
-    rew_lin_vel = torch.exp(-lin_vel_error / 0.25) * rew_scale_lin_vel
+    rew_lin_vel = torch.exp(-lin_vel_error / 0.1) * rew_scale_lin_vel
 
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
-    rew_ang_vel = torch.exp(-ang_vel_error / 0.25) * rew_scale_ang_vel
+    rew_ang_vel = torch.exp(-ang_vel_error / 0.1) * rew_scale_ang_vel
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy

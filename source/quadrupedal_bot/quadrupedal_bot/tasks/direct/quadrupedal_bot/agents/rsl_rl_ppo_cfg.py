@@ -6,7 +6,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 @configclass
 class PPORunnerCfg(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 24
-    max_iterations = 15000   # 6000 + 15000 = 21000 total (~4시간)
+    max_iterations = 10000
     save_interval = 200
     experiment_name = "spot_micro_locomotion"
 

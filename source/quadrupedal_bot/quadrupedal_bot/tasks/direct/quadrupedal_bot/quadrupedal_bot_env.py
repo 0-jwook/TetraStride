@@ -205,9 +205,9 @@ def compute_rewards(
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
     rew_ang_vel = torch.exp(-4.0 * ang_vel_error) * rew_scale_ang_vel
 
-    # reward feet that lift for ~0.5s before landing (encourages trot gait)
+    # reward feet that lift for ~0.2s before landing (Spot Micro 크기에 맞는 threshold)
     moving = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
-    rew_air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * rew_scale_air_time * moving
+    rew_air_time = torch.sum((last_air_time - 0.2) * first_contact, dim=1) * rew_scale_air_time * moving
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy

@@ -12,7 +12,7 @@ from .spot_micro_cfg import SPOT_MICRO_CFG
 class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- env timing ---
     decimation: int = 4
-    episode_length_s: float = 5.0
+    episode_length_s: float = 10.0
 
     # --- spaces ---
     # obs: lin_vel(3) + ang_vel(3) + proj_gravity(3) + commands(3)
@@ -39,12 +39,12 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
     # --- action ---
-    action_scale: float = 0.8
+    action_scale: float = 0.5
 
-    # --- velocity commands (fixed: simplify task to "walk forward at 1.5 m/s") ---
-    cmd_lin_vel_x_range: tuple = (1.5, 1.5)
-    cmd_lin_vel_y_range: tuple = (0.0, 0.0)
-    cmd_ang_vel_z_range: tuple = (0.0, 0.0)
+    # --- velocity commands ---
+    cmd_lin_vel_x_range: tuple = (0.5, 1.0)
+    cmd_lin_vel_y_range: tuple = (-0.3, 0.3)
+    cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
     termination_height: float = 0.08
@@ -61,4 +61,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
-    rew_scale_movement: float = 3.0     # strong gradient signal: reward any cmd-direction velocity
+    rew_scale_movement: float = 2.0     # linear gradient: reward any cmd-direction velocity

@@ -54,7 +54,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=3.0,
             saturation_effort=3.0,
             velocity_limit=10.0,
-            stiffness=25.0,
+            stiffness=10.0,
             damping=0.5,
         ),
         "leg_joints": DCMotorCfg(
@@ -62,7 +62,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=4.0,
             saturation_effort=4.0,
             velocity_limit=10.0,
-            stiffness=25.0,
+            stiffness=10.0,
             damping=0.5,
         ),
         "foot_joints": DCMotorCfg(
@@ -70,7 +70,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=4.0,
             saturation_effort=4.0,
             velocity_limit=10.0,
-            stiffness=25.0,
+            stiffness=10.0,
             damping=0.5,
         ),
     },

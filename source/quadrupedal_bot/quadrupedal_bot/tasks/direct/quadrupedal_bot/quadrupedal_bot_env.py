@@ -147,7 +147,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
 
         joint_pos = self.robot.data.default_joint_pos[env_ids]
-        joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.2
+        joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.1
         joint_vel = torch.zeros_like(joint_pos)
 
         root_state = self.robot.data.default_root_state[env_ids]

@@ -49,15 +49,15 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- termination ---
     termination_height: float = 0.08
 
-    # --- reward scales ---
-    rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 6.0
-    rew_scale_ang_vel: float = 1.0
+    # --- reward scales (legged_gym 기반) ---
+    rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
+    rew_scale_lin_vel: float = 2.0     # exp(-e²/0.25), legged_gym: 1.0~2.0
+    rew_scale_ang_vel: float = 0.5     # exp(-e²/0.25), legged_gym: 0.5
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
     rew_scale_gravity: float = -1.0
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.005
-    rew_scale_termination: float = -10.0
-    rew_scale_air_time: float = 2.0
+    rew_scale_action_rate: float = -0.01
+    rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
+    rew_scale_air_time: float = 1.5     # legged_gym: 1.0~2.5

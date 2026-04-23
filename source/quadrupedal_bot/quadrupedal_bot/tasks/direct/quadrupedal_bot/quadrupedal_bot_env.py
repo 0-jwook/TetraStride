@@ -151,6 +151,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         root_state = self.robot.data.default_root_state[env_ids]
         root_state[:, :3] += self.scene.env_origins[env_ids]
+        # bootstrap locomotion: start each episode with a small random forward velocity
+        root_state[:, 7] = torch.rand(n, device=self.device) * 0.3
 
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)
@@ -193,16 +195,12 @@ def compute_rewards(
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
-    # linear projection reward: 0 when standing, max when matching command speed (no local optimum)
-    cmd_speed_xy = torch.norm(commands[:, :2], dim=1).clamp(min=0.01)
-    projected_vel = (root_lin_vel_b[:, 0] * commands[:, 0] + root_lin_vel_b[:, 1] * commands[:, 1]) / cmd_speed_xy
-    rew_lin_vel = torch.minimum(projected_vel.clamp(min=0.0), cmd_speed_xy) * rew_scale_lin_vel
+    # exponential tracking rewards (legged_gym standard, sigma=0.25)
+    lin_vel_error = torch.sum(torch.square(commands[:, :2] - root_lin_vel_b[:, :2]), dim=1)
+    rew_lin_vel = torch.exp(-lin_vel_error / 0.25) * rew_scale_lin_vel
 
-    # linear angular velocity reward: 0 when standing with no rotation command
-    cmd_ang = commands[:, 2]
-    cmd_ang_abs = torch.abs(cmd_ang)
-    ang_in_cmd_dir = root_ang_vel_b[:, 2] * torch.sign(cmd_ang + 1e-6)
-    rew_ang_vel = torch.minimum(ang_in_cmd_dir.clamp(min=0.0), cmd_ang_abs) * rew_scale_ang_vel
+    ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
+    rew_ang_vel = torch.exp(-ang_vel_error / 0.25) * rew_scale_ang_vel
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
@@ -212,12 +210,14 @@ def compute_rewards(
     rew_action_rate = torch.sum(torch.square(actions - last_actions), dim=1) * rew_scale_action_rate
     rew_termination = reset_terminated.float() * rew_scale_termination
 
-    # reward feet that just landed after being airborne > 0.2s (encourages trotting gait)
+    # reward feet that just landed after being airborne > 0.1s (Spot Micro 크기 맞춤)
+    # only when there is a velocity command (legged_gym 방식)
+    cmd_has_vel = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
     rew_air_time = torch.sum(
-        (last_air_time - 0.2).clamp(min=0.0) * first_contact.float(), dim=1
-    ) * rew_scale_air_time
+        (last_air_time - 0.1).clamp(min=0.0) * first_contact.float(), dim=1
+    ) * rew_scale_air_time * cmd_has_vel
 
-    return (
+    total = (
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
@@ -230,3 +230,5 @@ def compute_rewards(
         + rew_termination
         + rew_air_time
     )
+    # clip at 0 to prevent negative rewards from destabilizing training (legged_gym: only_positive_rewards)
+    return total.clamp(min=0.0)

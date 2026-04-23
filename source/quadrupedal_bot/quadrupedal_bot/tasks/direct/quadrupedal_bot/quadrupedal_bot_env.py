@@ -96,6 +96,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_action_rate,
             self.cfg.rew_scale_termination,
             self.cfg.rew_scale_air_time,
+            self.cfg.rew_scale_movement,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -182,6 +183,7 @@ def compute_rewards(
     rew_scale_action_rate: float,
     rew_scale_termination: float,
     rew_scale_air_time: float,
+    rew_scale_movement: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -196,12 +198,18 @@ def compute_rewards(
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
-    # exponential tracking rewards — sigma=0.1 (sharp: standing gives <10% reward at cmd>=0.5)
+    # exponential tracking rewards (sigma=0.25: nonzero gradient even when far from cmd)
     lin_vel_error = torch.sum(torch.square(commands[:, :2] - root_lin_vel_b[:, :2]), dim=1)
-    rew_lin_vel = torch.exp(-lin_vel_error / 0.1) * rew_scale_lin_vel
+    rew_lin_vel = torch.exp(-lin_vel_error / 0.25) * rew_scale_lin_vel
 
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
-    rew_ang_vel = torch.exp(-ang_vel_error / 0.1) * rew_scale_ang_vel
+    rew_ang_vel = torch.exp(-ang_vel_error / 0.25) * rew_scale_ang_vel
+
+    # movement bonus: proportional reward for any velocity along command direction
+    # provides nonzero gradient at zero velocity, breaking the standing local optimum
+    cmd_dir = commands[:, :2] / (torch.norm(commands[:, :2], dim=1, keepdim=True).clamp(min=0.1))
+    vel_proj = (root_lin_vel_b[:, :2] * cmd_dir).sum(dim=1).clamp(min=0.0, max=2.0)
+    rew_movement = vel_proj * rew_scale_movement
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
@@ -222,6 +230,7 @@ def compute_rewards(
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
+        + rew_movement
         + rew_lin_vel_z
         + rew_ang_vel_xy
         + rew_gravity

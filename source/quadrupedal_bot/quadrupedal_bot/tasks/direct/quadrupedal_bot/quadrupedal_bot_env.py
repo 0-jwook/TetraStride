@@ -7,6 +7,7 @@ import torch
 import isaaclab.sim as sim_utils
 from isaaclab.assets import Articulation
 from isaaclab.envs import DirectRLEnv
+from isaaclab.sensors import ContactSensor
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 
 from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
@@ -17,6 +18,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def __init__(self, cfg: QuadrupedalBotEnvCfg, render_mode: str | None = None, **kwargs):
         super().__init__(cfg, render_mode, **kwargs)
+
+        self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
@@ -30,11 +33,13 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
+        self.contact_sensor = ContactSensor(self.cfg.contact_sensor)
         spawn_ground_plane(prim_path="/World/ground", cfg=GroundPlaneCfg())
         self.scene.clone_environments(copy_from_source=False)
         if self.device == "cpu":
             self.scene.filter_collisions(global_prim_paths=[])
         self.scene.articulations["robot"] = self.robot
+        self.scene.sensors["contact_sensor"] = self.contact_sensor
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
@@ -77,6 +82,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
     # ------------------------------------------------------------------
 
     def _get_rewards(self) -> torch.Tensor:
+        first_contact = self.contact_sensor.compute_first_contact(self.step_dt)[:, self._foot_ids]
+        last_air_time = self.contact_sensor.data.last_air_time[:, self._foot_ids]
         return compute_rewards(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_lin_vel,
@@ -88,6 +95,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_torque,
             self.cfg.rew_scale_action_rate,
             self.cfg.rew_scale_termination,
+            self.cfg.rew_scale_air_time,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -97,6 +105,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.actions,
             self._last_actions,
             self.reset_terminated,
+            last_air_time,
+            first_contact,
         )
 
     # ------------------------------------------------------------------
@@ -167,6 +177,7 @@ def compute_rewards(
     rew_scale_torque: float,
     rew_scale_action_rate: float,
     rew_scale_termination: float,
+    rew_scale_air_time: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -176,6 +187,8 @@ def compute_rewards(
     actions: torch.Tensor,
     last_actions: torch.Tensor,
     reset_terminated: torch.Tensor,
+    last_air_time: torch.Tensor,
+    first_contact: torch.Tensor,
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
@@ -193,6 +206,11 @@ def compute_rewards(
     rew_action_rate = torch.sum(torch.square(actions - last_actions), dim=1) * rew_scale_action_rate
     rew_termination = reset_terminated.float() * rew_scale_termination
 
+    # reward feet that just landed after being airborne > 0.2s (encourages trotting gait)
+    rew_air_time = torch.sum(
+        (last_air_time - 0.2).clamp(min=0.0) * first_contact.float(), dim=1
+    ) * rew_scale_air_time
+
     return (
         rew_alive
         + rew_lin_vel
@@ -204,4 +222,5 @@ def compute_rewards(
         + rew_torque
         + rew_action_rate
         + rew_termination
+        + rew_air_time
     )

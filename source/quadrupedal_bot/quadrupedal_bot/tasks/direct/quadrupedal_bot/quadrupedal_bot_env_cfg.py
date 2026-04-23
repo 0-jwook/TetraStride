@@ -51,7 +51,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- reward scales (legged_gym 기반) ---
     rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
-    rew_scale_lin_vel: float = 3.0     # exp(-e²/0.25), increased for stronger tracking signal
+    rew_scale_lin_vel: float = 5.0     # 3→5: stronger velocity tracking to break plateau
     rew_scale_ang_vel: float = 0.1     # reduced: prevent angular-vel standing optimum
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
@@ -61,5 +61,5 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
-    rew_scale_movement: float = 2.0     # linear gradient: reward any cmd-direction velocity
+    rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase

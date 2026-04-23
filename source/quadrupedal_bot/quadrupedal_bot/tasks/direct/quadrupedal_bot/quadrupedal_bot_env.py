@@ -146,6 +146,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
 
         joint_pos = self.robot.data.default_joint_pos[env_ids]
+        joint_pos = joint_pos + torch.randn_like(joint_pos) * 0.05
         joint_vel = torch.zeros_like(joint_pos)
 
         root_state = self.robot.data.default_root_state[env_ids]
@@ -197,8 +198,11 @@ def compute_rewards(
     projected_vel = (root_lin_vel_b[:, 0] * commands[:, 0] + root_lin_vel_b[:, 1] * commands[:, 1]) / cmd_speed_xy
     rew_lin_vel = torch.minimum(projected_vel.clamp(min=0.0), cmd_speed_xy) * rew_scale_lin_vel
 
-    ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
-    rew_ang_vel = torch.exp(-4.0 * ang_vel_error) * rew_scale_ang_vel
+    # linear angular velocity reward: 0 when standing with no rotation command
+    cmd_ang = commands[:, 2]
+    cmd_ang_abs = torch.abs(cmd_ang)
+    ang_in_cmd_dir = root_ang_vel_b[:, 2] * torch.sign(cmd_ang + 1e-6)
+    rew_ang_vel = torch.minimum(ang_in_cmd_dir.clamp(min=0.0), cmd_ang_abs) * rew_scale_ang_vel
 
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy

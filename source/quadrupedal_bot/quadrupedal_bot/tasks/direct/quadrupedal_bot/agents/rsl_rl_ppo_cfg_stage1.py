@@ -8,7 +8,7 @@ class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
     """Stage 1 (서기) PPO 설정 — 3000 iteration으로 자세 수렴."""
 
     num_steps_per_env = 24
-    max_iterations = 3000
+    max_iterations = 5000
     save_interval = 200
     experiment_name = "spot_micro_stance"
 

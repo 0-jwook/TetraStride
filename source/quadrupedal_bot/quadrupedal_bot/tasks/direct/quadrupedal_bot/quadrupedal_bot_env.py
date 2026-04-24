@@ -21,8 +21,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
-        # foot body IDs for position lookup (robot body array, not sensor array)
-        self._foot_body_ids, _ = self.robot.find_bodies(".*foot_link")
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
@@ -120,17 +118,21 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
-        # trot gait reference reward: reward foot clearance during swing phase
-        # foot_body_ids assumed ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical)
-        foot_heights = self.robot.data.body_pos_w[:, self._foot_body_ids, 2]  # [N, 4]
-        phase_A = self._gait_phase                                  # FL(0) + RR(3) swing
-        phase_B = (self._gait_phase + math.pi) % (2.0 * math.pi)  # FR(1) + RL(2) swing
-        swing_A = (torch.sin(phase_A) > 0.0).float()
-        swing_B = (torch.sin(phase_B) > 0.0).float()
-        swing_mask = torch.stack([swing_A, swing_B, swing_B, swing_A], dim=1)
-        # reward 0-8cm clearance above ground during swing phase
-        foot_clearance = (foot_heights - 0.01).clamp(min=0.0, max=0.08)
-        rew_gait = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_gait
+        # trot gait contact schedule reward: each foot rewarded for matching expected stance/swing
+        # foot_ids ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical, same as contact sensor)
+        # swing_A active (sin > 0): FL+RR should be in air; FR+RL should be on ground
+        swing_A = (torch.sin(self._gait_phase) > 0.0)  # [N]
+        # expected_contact: 1 = foot should be touching ground, 0 = foot should be in air
+        expected_contact = torch.stack([
+            (~swing_A).float(),   # FL: on ground when swing_A inactive
+            swing_A.float(),      # FR: on ground when swing_A active
+            swing_A.float(),      # RL: on ground when swing_A active
+            (~swing_A).float(),   # RR: on ground when swing_A inactive
+        ], dim=1)  # [N, 4]
+        foot_net_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
+        actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()  # [N, 4]
+        contact_correct = expected_contact * actual_contact + (1.0 - expected_contact) * (1.0 - actual_contact)
+        rew_gait = contact_correct.sum(dim=1) * self.cfg.rew_scale_gait  # [N]
 
         return (base_rew + rew_gait).clamp(min=0.0)
 

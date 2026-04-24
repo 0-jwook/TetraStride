@@ -15,8 +15,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     cmd_ang_vel_z_range: tuple = (-0.2, 0.2)
 
     # 보상: 접촉 스케줄 + 자세 유지 + 약한 속도 추적
-    rew_scale_alive: float = 0.2
-    rew_scale_lin_vel: float = 1.0      # 약한 속도 추적 (방향성만 유도)
+    rew_scale_alive: float = 0.5
+    rew_scale_lin_vel: float = 2.0      # 속도 추적 강화 (gait 축소로 균형)
     rew_scale_ang_vel: float = 0.05
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
@@ -25,6 +25,6 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0
-    rew_scale_air_time: float = 6.0     # 발 공중 시간 보상
-    rew_scale_movement: float = 1.0     # 약한 이동 보상
-    rew_scale_gait: float = 15.0        # 접촉 스케줄 보상 (트롯 패턴 학습 핵심)
+    rew_scale_air_time: float = 3.0     # 축소: value_loss 폭발 방지
+    rew_scale_movement: float = 1.5     # 이동 보상
+    rew_scale_gait: float = 5.0         # 축소: 15→5, 총 보상 규모 제어

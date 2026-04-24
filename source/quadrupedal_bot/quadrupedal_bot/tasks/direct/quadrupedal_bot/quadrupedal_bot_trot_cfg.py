@@ -27,4 +27,4 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_termination: float = 0.0
     rew_scale_air_time: float = 6.0     # 발 공중 시간 보상
     rew_scale_movement: float = 1.0     # 약한 이동 보상
-    rew_scale_gait: float = 5.0         # 접촉 스케줄 보상 (트롯 패턴 학습 핵심)
+    rew_scale_gait: float = 15.0        # 접촉 스케줄 보상 (트롯 패턴 학습 핵심)

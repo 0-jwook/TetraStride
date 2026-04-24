@@ -131,8 +131,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         ], dim=1)  # [N, 4]
         foot_net_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
         actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()  # [N, 4]
-        contact_correct = expected_contact * actual_contact + (1.0 - expected_contact) * (1.0 - actual_contact)
-        rew_gait = contact_correct.sum(dim=1) * self.cfg.rew_scale_gait  # [N]
+        # reward correct contacts, penalize wrong contacts (standing → net 0, trot → net 4×scale)
+        contact_match = (expected_contact * actual_contact).sum(dim=1)
+        contact_wrong = ((1.0 - expected_contact) * actual_contact).sum(dim=1)
+        rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait  # [N]
 
         return (base_rew + rew_gait).clamp(min=0.0)
 

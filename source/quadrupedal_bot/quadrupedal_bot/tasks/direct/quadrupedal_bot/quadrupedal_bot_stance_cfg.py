@@ -28,5 +28,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    rew_scale_body_height: float = -15.0      # Stage 1: 더 강한 높이 강제
-    rew_scale_non_foot_contact: float = -3.0  # Stage 1: 무릎/배 접촉 강한 패널티
+    rew_scale_body_height: float = -3.0       # Stage 1: 완만한 높이 유도 (너무 강하면 학습 방해)
+    rew_scale_non_foot_contact: float = 0.0  # Stage 1: 비활성화 (정강이 자연접촉으로 오발동)

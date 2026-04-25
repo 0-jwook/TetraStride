@@ -166,14 +166,18 @@ class QuadrupedalBotEnv(DirectRLEnv):
         non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
-        # 어깨(abduction) 관절만 기본값 이탈 패널티 — 다리가 몸통 중앙으로 모이는 것 방지
-        # leg/foot 관절은 균형 유지를 위해 자유롭게 움직일 수 있어야 함
-        shoulder_dev = torch.sum(torch.square(
+        # 어깨 관절 dead zone 패널티: 0.3 rad 이내 이탈은 허용 (균형 조정 자유도), 초과분만 패널티
+        shoulder_dev = torch.abs(
             self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
-        ), dim=1)
-        rew_joint_default = shoulder_dev * self.cfg.rew_scale_joint_default
+        )
+        shoulder_excess = (shoulder_dev - 0.3).clamp(min=0.0)
+        rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
 
-        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default).clamp(min=0.0)
+        # IMU 기울기 보상: projected_gravity_b[:, 2] ≈ -1이면 직립, 0이면 넘어짐
+        # (-gz).clamp(min=0): 직립일수록 최대 보상, 넘어질수록 0
+        rew_upright = (-self.robot.data.projected_gravity_b[:, 2]).clamp(min=0.0) * self.cfg.rew_scale_upright
+
+        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright).clamp(min=0.0)
 
     # ------------------------------------------------------------------
     # Done / Termination

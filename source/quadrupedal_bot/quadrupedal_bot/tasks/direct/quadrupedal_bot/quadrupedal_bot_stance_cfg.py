@@ -32,4 +32,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
     rew_scale_lin_vel_xy: float = -0.5        # 제자리 유지: 수평 이동 패널티
     rew_scale_ang_vel_z: float = -0.2         # yaw 스핀 패널티 (빙글빙글 방지)
-    rew_scale_joint_default: float = -0.1     # 기본 자세 이탈 패널티 (다리 중앙 몰림 방지)
+    rew_scale_joint_default: float = -0.5     # 어깨 0.3 rad 초과 이탈 시 패널티
+    rew_scale_upright: float = 1.0            # IMU 직립 보상: 완전 직립=1.0, 넘어짐=0

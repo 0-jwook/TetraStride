@@ -30,3 +30,4 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
     rew_scale_body_height: float = 0.0         # Stage 1: 비활성화 (termination_height=0.15로 대체)
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
+    rew_scale_lin_vel_xy: float = -0.5        # 제자리 유지: 수평 이동 패널티

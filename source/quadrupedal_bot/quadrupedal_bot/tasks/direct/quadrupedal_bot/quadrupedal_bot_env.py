@@ -112,6 +112,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_termination,
             self.cfg.rew_scale_air_time,
             self.cfg.rew_scale_movement,
+            self.cfg.rew_scale_lin_vel_xy,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -231,6 +232,7 @@ def compute_rewards(
     rew_scale_termination: float,
     rew_scale_air_time: float,
     rew_scale_movement: float,
+    rew_scale_lin_vel_xy: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -257,6 +259,7 @@ def compute_rewards(
     vel_proj = (root_lin_vel_b[:, :2] * cmd_dir).sum(dim=1).clamp(min=0.0, max=2.0)
     rew_movement = vel_proj * rew_scale_movement
 
+    rew_lin_vel_xy = torch.sum(torch.square(root_lin_vel_b[:, :2]), dim=1) * rew_scale_lin_vel_xy
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
     rew_gravity = torch.sum(torch.square(projected_gravity_b[:, :2]), dim=1) * rew_scale_gravity
@@ -275,6 +278,7 @@ def compute_rewards(
         + rew_lin_vel
         + rew_ang_vel
         + rew_movement
+        + rew_lin_vel_xy
         + rew_lin_vel_z
         + rew_ang_vel_xy
         + rew_gravity

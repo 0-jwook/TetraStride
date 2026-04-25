@@ -173,9 +173,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         shoulder_excess = (shoulder_dev - 0.3).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
 
-        # IMU 기울기 보상: projected_gravity_b[:, 2] ≈ -1이면 직립, 0이면 넘어짐
-        # (-gz).clamp(min=0): 직립일수록 최대 보상, 넘어질수록 0
-        rew_upright = (-self.robot.data.projected_gravity_b[:, 2]).clamp(min=0.0) * self.cfg.rew_scale_upright
+        # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
+        # tilt = gx²+gy² (0=직립, 1=완전 넘어짐), sigma=0.04 → 10° 이상이면 보상 거의 0
+        tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
+        rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright).clamp(min=0.0)
 

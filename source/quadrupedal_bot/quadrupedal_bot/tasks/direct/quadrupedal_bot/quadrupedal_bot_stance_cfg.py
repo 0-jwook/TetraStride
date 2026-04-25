@@ -28,5 +28,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    rew_scale_body_height: float = -3.0      # Stage 1: 완만한 높이 유도
-    rew_scale_non_foot_contact: float = -2.0  # Stage 1: 무릎보행 패널티 (20N 이상만 감지)
+    rew_scale_body_height: float = 0.0         # Stage 1: 비활성화 (termination_height=0.15로 대체)
+    rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)

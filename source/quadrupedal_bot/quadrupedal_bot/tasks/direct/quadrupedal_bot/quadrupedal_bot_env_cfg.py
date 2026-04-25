@@ -47,7 +47,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
-    termination_height: float = 0.08
+    termination_height: float = 0.15   # 0.08→0.15: 플랭크/크라우치 즉시 종료
+    target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
 
     # --- reward scales (legged_gym 기반) ---
     rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
@@ -63,3 +64,5 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase
+    rew_scale_body_height: float = -10.0  # 몸통 낮으면 페널티 (플랭크 방지)
+    rew_scale_non_foot_contact: float = -2.0  # 발 외 부위(무릎/배) 지면 접촉 페널티

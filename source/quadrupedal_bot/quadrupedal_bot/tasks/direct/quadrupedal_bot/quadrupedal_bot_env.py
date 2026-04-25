@@ -10,6 +10,7 @@ from isaaclab.assets import Articulation
 from isaaclab.envs import DirectRLEnv
 from isaaclab.sensors import ContactSensor
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
+from isaaclab.sim.spawners.materials import RigidBodyMaterialCfg
 
 from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
@@ -44,7 +45,16 @@ class QuadrupedalBotEnv(DirectRLEnv):
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
         self.contact_sensor = ContactSensor(self.cfg.contact_sensor)
-        spawn_ground_plane(prim_path="/World/ground", cfg=GroundPlaneCfg())
+        spawn_ground_plane(
+            prim_path="/World/ground",
+            cfg=GroundPlaneCfg(
+                physics_material=RigidBodyMaterialCfg(
+                    static_friction=1.0,
+                    dynamic_friction=1.0,
+                    restitution=0.0,
+                )
+            ),
+        )
         self.scene.clone_environments(copy_from_source=False)
         if self.device == "cpu":
             self.scene.filter_collisions(global_prim_paths=[])
@@ -113,6 +123,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_air_time,
             self.cfg.rew_scale_movement,
             self.cfg.rew_scale_lin_vel_xy,
+            self.cfg.rew_scale_ang_vel_z,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -154,7 +165,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
         non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
-        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact).clamp(min=0.0)
+        # Joint default position penalty: 기본 자세 이탈 방지 (다리 중앙 몰림 방지)
+        joint_default_error = torch.sum(torch.square(self.joint_pos - self.robot.data.default_joint_pos), dim=1)
+        rew_joint_default = joint_default_error * self.cfg.rew_scale_joint_default
+
+        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default).clamp(min=0.0)
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -233,6 +248,7 @@ def compute_rewards(
     rew_scale_air_time: float,
     rew_scale_movement: float,
     rew_scale_lin_vel_xy: float,
+    rew_scale_ang_vel_z: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -260,6 +276,7 @@ def compute_rewards(
     rew_movement = vel_proj * rew_scale_movement
 
     rew_lin_vel_xy = torch.sum(torch.square(root_lin_vel_b[:, :2]), dim=1) * rew_scale_lin_vel_xy
+    rew_ang_vel_z = torch.square(root_ang_vel_b[:, 2]) * rew_scale_ang_vel_z
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
     rew_gravity = torch.sum(torch.square(projected_gravity_b[:, :2]), dim=1) * rew_scale_gravity
@@ -279,6 +296,7 @@ def compute_rewards(
         + rew_ang_vel
         + rew_movement
         + rew_lin_vel_xy
+        + rew_ang_vel_z
         + rew_lin_vel_z
         + rew_ang_vel_xy
         + rew_gravity

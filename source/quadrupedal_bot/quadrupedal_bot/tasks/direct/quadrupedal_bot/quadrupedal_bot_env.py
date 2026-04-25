@@ -148,8 +148,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_body_height = (self.cfg.target_body_height - body_height).clamp(min=0.0) * self.cfg.rew_scale_body_height
 
         # Non-foot contact penalty: penalize knee/belly touching ground
+        # threshold=20N: 정상 서기 시 정강이 스침(~1-5N)은 무시, 실제 무게를 싣는 무릎보행(>20N)만 감지
         non_foot_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._non_foot_contact_ids, :]
-        non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 1.0).float()
+        non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact).clamp(min=0.0)

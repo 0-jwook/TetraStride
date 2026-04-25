@@ -22,6 +22,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
+        self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
         # All non-foot body IDs for knee/belly contact penalty
         all_body_ids, _ = self.contact_sensor.find_bodies(".*")
         foot_id_set = set(int(i) for i in self._foot_ids)
@@ -165,9 +166,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
-        # Joint default position penalty: 기본 자세 이탈 방지 (다리 중앙 몰림 방지)
-        joint_default_error = torch.sum(torch.square(self.joint_pos - self.robot.data.default_joint_pos), dim=1)
-        rew_joint_default = joint_default_error * self.cfg.rew_scale_joint_default
+        # 어깨(abduction) 관절만 기본값 이탈 패널티 — 다리가 몸통 중앙으로 모이는 것 방지
+        # leg/foot 관절은 균형 유지를 위해 자유롭게 움직일 수 있어야 함
+        shoulder_dev = torch.sum(torch.square(
+            self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
+        ), dim=1)
+        rew_joint_default = shoulder_dev * self.cfg.rew_scale_joint_default
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default).clamp(min=0.0)
 

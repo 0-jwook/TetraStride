@@ -42,16 +42,17 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     action_scale: float = 0.5
 
     # --- velocity commands ---
-    cmd_lin_vel_x_range: tuple = (0.5, 1.0)
+    cmd_lin_vel_x_range: tuple = (0.2, 0.6)
     cmd_lin_vel_y_range: tuple = (-0.3, 0.3)
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
     termination_height: float = 0.15   # 0.08→0.15: 플랭크/크라우치 즉시 종료
     target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
+    target_foot_span: float = 0.18     # 발 좌우 간격 최소 기준 (미달 시 패널티)
 
     # --- reward scales (legged_gym 기반) ---
-    rew_scale_alive: float = 0.0       # legged_gym: alive reward 없음
+    rew_scale_alive: float = 0.2       # Stage3: 살아있기 보상
     rew_scale_lin_vel: float = 5.0     # 3→5: stronger velocity tracking to break plateau
     rew_scale_ang_vel: float = 0.1     # reduced: prevent angular-vel standing optimum
     rew_scale_lin_vel_z: float = -2.0
@@ -69,4 +70,5 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_lin_vel_xy: float = 0.0        # 수평 이동 패널티 (Stance에서만 활성화)
     rew_scale_ang_vel_z: float = 0.0         # yaw 회전 패널티 (Stance에서만 활성화)
     rew_scale_joint_default: float = 0.0     # 어깨 관절 dead zone 패널티
-    rew_scale_upright: float = 0.0           # IMU 직립 보상 (projected_gravity_b z축 기반)
+    rew_scale_upright: float = 0.3           # IMU 직립 보상 (projected_gravity_b z축 기반)
+    rew_scale_foot_spread: float = 0.0       # 발 좌우 간격 패널티 (Stance에서 활성화)

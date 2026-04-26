@@ -22,6 +22,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         super().__init__(cfg, render_mode, **kwargs)
 
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
+        self._foot_body_ids_robot, _ = self.robot.find_bodies(".*foot_link")
         self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
         # All non-foot body IDs for knee/belly contact penalty
         all_body_ids, _ = self.contact_sensor.find_bodies(".*")
@@ -123,8 +124,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_termination,
             self.cfg.rew_scale_air_time,
             self.cfg.rew_scale_movement,
-            self.cfg.rew_scale_lin_vel_xy,
-            self.cfg.rew_scale_ang_vel_z,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -137,6 +136,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
             last_air_time,
             first_contact,
         )
+
+        # clamp 밖에서 적용해야 실제로 작동하는 패널티들
+        rew_ang_vel_z = torch.square(self.robot.data.root_ang_vel_b[:, 2]) * self.cfg.rew_scale_ang_vel_z
+        rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
         # trot gait contact schedule reward: each foot rewarded for matching expected stance/swing
         # foot_ids ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical, same as contact sensor)
@@ -170,7 +173,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         shoulder_dev = torch.abs(
             self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
         )
-        shoulder_excess = (shoulder_dev - 0.3).clamp(min=0.0)
+        shoulder_excess = (shoulder_dev - 0.2).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
 
         # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
@@ -178,7 +181,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
         rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
-        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright).clamp(min=0.0)
+        # Foot spread penalty: penalize feet gathering to center (Y-axis lateral span)
+        # Prevents robot from stabilizing by pulling legs inward under body
+        foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
+        foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
+        foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
+        span_violation = (self.cfg.target_foot_span - foot_span).clamp(min=0.0)
+        rew_foot_spread = span_violation * self.cfg.rew_scale_foot_spread  # [N]
+
+        return base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -256,8 +267,6 @@ def compute_rewards(
     rew_scale_termination: float,
     rew_scale_air_time: float,
     rew_scale_movement: float,
-    rew_scale_lin_vel_xy: float,
-    rew_scale_ang_vel_z: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -284,8 +293,6 @@ def compute_rewards(
     vel_proj = (root_lin_vel_b[:, :2] * cmd_dir).sum(dim=1).clamp(min=0.0, max=2.0)
     rew_movement = vel_proj * rew_scale_movement
 
-    rew_lin_vel_xy = torch.sum(torch.square(root_lin_vel_b[:, :2]), dim=1) * rew_scale_lin_vel_xy
-    rew_ang_vel_z = torch.square(root_ang_vel_b[:, 2]) * rew_scale_ang_vel_z
     rew_lin_vel_z = torch.square(root_lin_vel_b[:, 2]) * rew_scale_lin_vel_z
     rew_ang_vel_xy = torch.sum(torch.square(root_ang_vel_b[:, :2]), dim=1) * rew_scale_ang_vel_xy
     rew_gravity = torch.sum(torch.square(projected_gravity_b[:, :2]), dim=1) * rew_scale_gravity
@@ -304,8 +311,6 @@ def compute_rewards(
         + rew_lin_vel
         + rew_ang_vel
         + rew_movement
-        + rew_lin_vel_xy
-        + rew_ang_vel_z
         + rew_lin_vel_z
         + rew_ang_vel_xy
         + rew_gravity

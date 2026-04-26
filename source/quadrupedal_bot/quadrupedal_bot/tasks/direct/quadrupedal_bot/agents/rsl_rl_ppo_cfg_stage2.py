@@ -8,7 +8,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     """Stage 2 (트롯) PPO 설정 — 5000 iteration으로 접촉 스케줄 + 약한 전진 학습."""
 
     num_steps_per_env = 24
-    max_iterations = 8000
+    max_iterations = 6000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 

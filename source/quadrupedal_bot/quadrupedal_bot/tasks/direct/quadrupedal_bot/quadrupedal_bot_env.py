@@ -34,6 +34,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
+        self._processed_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         # trot gait phase: each env has its own phase, randomized at reset
         self._gait_phase = torch.zeros(self.num_envs, device=self.device)
 
@@ -71,11 +72,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
-        # advance trot gait clock at 1.5 Hz
+        self._processed_actions = (
+            self.cfg.action_smoothing * self.actions
+            + (1.0 - self.cfg.action_smoothing) * self._processed_actions
+        )
         self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
 
     def _apply_action(self) -> None:
-        target = self.robot.data.default_joint_pos + self.actions * self.cfg.action_scale
+        target = self.robot.data.default_joint_pos + self._processed_actions * self.cfg.action_scale
         self.robot.set_joint_position_target(target)
 
     # ------------------------------------------------------------------
@@ -240,6 +244,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos[env_ids] = joint_pos
         self.joint_vel[env_ids] = joint_vel
         self._last_actions[env_ids] = 0.0
+        self._processed_actions[env_ids] = 0.0
         # randomize gait phase at reset to break synchronization
         self._gait_phase[env_ids] = torch.zeros(n, device=self.device).uniform_(0.0, 2.0 * math.pi)
 

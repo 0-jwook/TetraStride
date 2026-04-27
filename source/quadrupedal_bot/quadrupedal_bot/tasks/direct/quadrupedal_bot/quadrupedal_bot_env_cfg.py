@@ -39,7 +39,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
     # --- action ---
-    action_scale: float = 0.5
+    action_scale: float = 0.25
+    action_smoothing: float = 0.8
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.2, 0.6)

@@ -314,7 +314,7 @@ def compute_rewards(
         (last_air_time - 0.1).clamp(min=0.0) * first_contact.float(), dim=1
     ) * rew_scale_air_time * cmd_has_vel
 
-    total = (
+    living = (
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
@@ -325,7 +325,7 @@ def compute_rewards(
         + rew_joint_vel
         + rew_torque
         + rew_action_rate
-        + rew_termination
         + rew_air_time
     )
-    return total.clamp(min=0.0)
+    # termination penalty applied outside clamp so it's never zeroed out
+    return living.clamp(min=0.0) + rew_termination

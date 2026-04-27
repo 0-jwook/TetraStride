@@ -62,7 +62,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
-    rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
+    rew_scale_termination: float = -200.0  # outside clamp: always applies when terminated
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase

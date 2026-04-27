@@ -62,16 +62,16 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=12.0,
             saturation_effort=12.0,
             velocity_limit=10.0,
-            stiffness=30.0,   # 60→30: hobby robot 적정값, 진동 억제
-            damping=1.5,      # 3→1.5
+            stiffness=60.0,
+            damping=3.0,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
             effort_limit=12.0,
             saturation_effort=12.0,
             velocity_limit=10.0,
-            stiffness=30.0,   # 60→30
-            damping=1.5,      # 3→1.5
+            stiffness=60.0,
+            damping=3.0,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

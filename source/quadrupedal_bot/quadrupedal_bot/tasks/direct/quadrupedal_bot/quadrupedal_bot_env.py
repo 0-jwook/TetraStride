@@ -233,7 +233,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         body_fallen = self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height
-        body_tilted = self.robot.data.projected_gravity_b[:, 2] > 0.0
+        body_tilted = self.robot.data.projected_gravity_b[:, 2] > -0.5
 
         terminated = body_fallen | body_tilted
         return terminated, time_out
@@ -335,7 +335,7 @@ def compute_rewards(
         (last_air_time - 0.4).clamp(min=0.0) * first_contact.float(), dim=1
     ) * rew_scale_air_time
 
-    total = (
+    living = (
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
@@ -346,7 +346,7 @@ def compute_rewards(
         + rew_joint_vel
         + rew_torque
         + rew_action_rate
-        + rew_termination
         + rew_air_time
     )
-    return total
+    # termination penalty is outside clamp so it always acts as a deterrent
+    return living.clamp(min=0.0) + rew_termination

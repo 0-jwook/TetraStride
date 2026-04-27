@@ -7,13 +7,13 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
     """Stage 1 (서기) PPO 설정 — 3000 iteration으로 자세 수렴."""
 
-    num_steps_per_env = 24
+    num_steps_per_env = 32
     max_iterations = 5000
     save_interval = 200
     experiment_name = "spot_micro_stance"
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,
+        init_noise_std=0.5,
         actor_obs_normalization=True,
         critic_obs_normalization=True,
         actor_hidden_dims=[512, 256, 128],

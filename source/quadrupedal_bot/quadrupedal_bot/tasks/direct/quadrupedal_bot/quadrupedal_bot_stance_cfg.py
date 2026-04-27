@@ -24,7 +24,6 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
-    rew_scale_termination: float = 0.0
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
@@ -34,5 +33,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티 (완화)
     rew_scale_joint_default: float = -0.5      # 어깨 0.2 rad 초과 이탈 시 패널티 (완화)
     rew_scale_upright: float = 1.0            # IMU 직립 보상: 완전 직립=1.0, 넘어짐=0
-    rew_scale_foot_spread: float = 0.0        # Stage1: 비활성화 (서기 학습 우선, Stage2부터 적용)
+    rew_scale_foot_spread: float = -2.0       # 발 안쪽 모임 방지 (sliding survival 차단)
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화

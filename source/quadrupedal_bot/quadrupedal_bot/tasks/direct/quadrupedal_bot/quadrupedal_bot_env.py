@@ -34,11 +34,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
-        # trot gait phase: each env has its own phase, randomized at reset
         self._gait_phase = torch.zeros(self.num_envs, device=self.device)
 
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
+        self._last_joint_vel = torch.zeros_like(self.robot.data.joint_vel)
 
     # ------------------------------------------------------------------
     # Scene
@@ -182,14 +182,18 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
         # Foot spread penalty: penalize feet gathering to center (Y-axis lateral span)
-        # Prevents robot from stabilizing by pulling legs inward under body
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
         foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
         foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
         span_violation = (self.cfg.target_foot_span - foot_span).clamp(min=0.0)
         rew_foot_spread = span_violation * self.cfg.rew_scale_foot_spread  # [N]
 
-        return base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread
+        # DOF acceleration penalty: suppresses joint vibration (Rudin 2021 standard)
+        dof_acc = (self.joint_vel - self._last_joint_vel) / self.step_dt
+        rew_dof_acc = torch.sum(torch.square(dof_acc), dim=1) * self.cfg.rew_scale_dof_acc
+        self._last_joint_vel = self.joint_vel.clone()
+
+        return base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_dof_acc
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -201,7 +205,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         body_fallen = self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height
-        body_tilted = self.robot.data.projected_gravity_b[:, 2] > -0.5
+        body_tilted = self.robot.data.projected_gravity_b[:, 2] > 0.0  # -0.5→0.0: 완전 뒤집힐 때만 종료
 
         terminated = body_fallen | body_tilted
         return terminated, time_out
@@ -233,9 +237,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         root_state = self.robot.data.default_root_state[env_ids]
         root_state[:, :3] += self.scene.env_origins[env_ids]
-        # bootstrap: start at command velocity so robot must learn to maintain it
-        root_state[:, 7] = self._commands[env_ids, 0]
-        root_state[:, 8] = self._commands[env_ids, 1]
 
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)
@@ -244,7 +245,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos[env_ids] = joint_pos
         self.joint_vel[env_ids] = joint_vel
         self._last_actions[env_ids] = 0.0
-        # randomize gait phase at reset to break synchronization
+        self._last_joint_vel[env_ids] = 0.0
         self._gait_phase[env_ids] = torch.zeros(n, device=self.device).uniform_(0.0, 2.0 * math.pi)
 
 
@@ -320,4 +321,4 @@ def compute_rewards(
         + rew_termination
         + rew_air_time
     )
-    return total.clamp(min=0.0)
+    return total

@@ -39,7 +39,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
     # --- action ---
-    action_scale: float = 0.5
+    action_scale: float = 0.25   # 0.5→0.25: Rudin 표준, 과도한 관절 이동 방지
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.2, 0.6)
@@ -47,7 +47,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
-    termination_height: float = 0.15   # 0.08→0.15: 플랭크/크라우치 즉시 종료
+    termination_height: float = 0.05   # 0.15→0.05: 완전 쓰러질 때만 종료 (Rudin 표준)
     target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
     target_foot_span: float = 0.18     # 발 좌우 간격 최소 기준 (미달 시 패널티)
 
@@ -61,7 +61,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
-    rew_scale_termination: float = 0.0  # legged_gym: -0.0 (패널티 없음, 핵심!)
+    rew_scale_termination: float = -200.0  # Rudin 표준: 조기 종료 강한 패널티
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase
@@ -72,3 +72,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_joint_default: float = 0.0     # 어깨 관절 dead zone 패널티
     rew_scale_upright: float = 0.3           # IMU 직립 보상 (projected_gravity_b z축 기반)
     rew_scale_foot_spread: float = 0.0       # 발 좌우 간격 패널티 (Stance에서 활성화)
+    rew_scale_dof_acc: float = -2.5e-7       # DOF 가속도 패널티 (Rudin 표준, 관절 진동 억제)

@@ -13,7 +13,7 @@ class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_stance"
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,
+        init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지
         actor_obs_normalization=True,
         critic_obs_normalization=True,
         actor_hidden_dims=[512, 256, 128],

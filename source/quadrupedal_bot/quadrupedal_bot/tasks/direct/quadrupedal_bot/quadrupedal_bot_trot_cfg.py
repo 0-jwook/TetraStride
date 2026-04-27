@@ -24,7 +24,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
-    rew_scale_termination: float = 0.0
+    rew_scale_termination: float = -200.0  # 조기 종료 강한 패널티 (Rudin 표준)
     rew_scale_air_time: float = 3.0
     rew_scale_movement: float = 1.5
     rew_scale_gait: float = 2.0          # 5.0→2.0: gait 강제 완화

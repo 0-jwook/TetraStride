@@ -24,6 +24,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
         self._foot_body_ids_robot, _ = self.robot.find_bodies(".*foot_link")
         self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
+        # All non-foot body IDs for knee/belly contact penalty
         all_body_ids, _ = self.contact_sensor.find_bodies(".*")
         foot_id_set = set(int(i) for i in self._foot_ids)
         self._non_foot_contact_ids = torch.tensor(
@@ -33,13 +34,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
-        self._last_last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
-        self._processed_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
+        # trot gait phase: each env has its own phase, randomized at reset
         self._gait_phase = torch.zeros(self.num_envs, device=self.device)
 
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
-        self._last_joint_vel = torch.zeros_like(self.robot.data.joint_vel)
 
     # ------------------------------------------------------------------
     # Scene
@@ -72,15 +71,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.actions = actions.clone()
-        # exponential smoothing: alpha=0.8 suppresses high-frequency jitter (Margolis 2022)
-        self._processed_actions = (
-            self.cfg.action_smoothing * self.actions
-            + (1.0 - self.cfg.action_smoothing) * self._processed_actions
-        )
+        # advance trot gait clock at 1.5 Hz
         self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
 
     def _apply_action(self) -> None:
-        target = self.robot.data.default_joint_pos + self._processed_actions * self.cfg.action_scale
+        target = self.robot.data.default_joint_pos + self.actions * self.cfg.action_scale
         self.robot.set_joint_position_target(target)
 
     # ------------------------------------------------------------------
@@ -105,7 +100,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
             ],
             dim=-1,
         )
-        self._last_last_actions = self._last_actions.clone()
         self._last_actions = self.actions.clone()
         return {"policy": obs}
 
@@ -143,85 +137,59 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
+        # clamp 밖에서 적용해야 실제로 작동하는 패널티들
         rew_ang_vel_z = torch.square(self.robot.data.root_ang_vel_b[:, 2]) * self.cfg.rew_scale_ang_vel_z
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
-        # Trot gait contact schedule
-        swing_A = (torch.sin(self._gait_phase) > 0.0)
+        # trot gait contact schedule reward: each foot rewarded for matching expected stance/swing
+        # foot_ids ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical, same as contact sensor)
+        # swing_A active (sin > 0): FL+RR should be in air; FR+RL should be on ground
+        swing_A = (torch.sin(self._gait_phase) > 0.0)  # [N]
+        # expected_contact: 1 = foot should be touching ground, 0 = foot should be in air
         expected_contact = torch.stack([
-            (~swing_A).float(),   # FL
-            swing_A.float(),      # FR
-            swing_A.float(),      # RL
-            (~swing_A).float(),   # RR
-        ], dim=1)
+            (~swing_A).float(),   # FL: on ground when swing_A inactive
+            swing_A.float(),      # FR: on ground when swing_A active
+            swing_A.float(),      # RL: on ground when swing_A active
+            (~swing_A).float(),   # RR: on ground when swing_A inactive
+        ], dim=1)  # [N, 4]
         foot_net_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
-        actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()
+        actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()  # [N, 4]
+        # reward correct contacts, penalize wrong contacts (standing → net 0, trot → net 4×scale)
         contact_match = (expected_contact * actual_contact).sum(dim=1)
         contact_wrong = ((1.0 - expected_contact) * actual_contact).sum(dim=1)
-        rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait
+        rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait  # [N]
 
-        # Body height penalty
+        # Body height penalty: penalize crouching/plank below target height
         body_height = self.robot.data.root_pos_w[:, 2]
         rew_body_height = (self.cfg.target_body_height - body_height).clamp(min=0.0) * self.cfg.rew_scale_body_height
 
-        # Non-foot contact penalty
+        # Non-foot contact penalty: penalize knee/belly touching ground
+        # threshold=20N: 정상 서기 시 정강이 스침(~1-5N)은 무시, 실제 무게를 싣는 무릎보행(>20N)만 감지
         non_foot_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._non_foot_contact_ids, :]
         non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
-        # Shoulder dead zone penalty
+        # 어깨 관절 dead zone 패널티: 0.3 rad 이내 이탈은 허용 (균형 조정 자유도), 초과분만 패널티
         shoulder_dev = torch.abs(
             self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
         )
         shoulder_excess = (shoulder_dev - 0.2).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
 
-        # Upright reward
+        # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
+        # tilt = gx²+gy² (0=직립, 1=완전 넘어짐), sigma=0.04 → 10° 이상이면 보상 거의 0
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
         rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
-        # Foot spread penalty: Y(좌우) + X(앞뒤) 양방향 (Margolis 2022)
-        foot_xy_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
-        foot_y_span = foot_xy_world[:, :, 1].max(dim=1).values - foot_xy_world[:, :, 1].min(dim=1).values
-        foot_x_span = foot_xy_world[:, :, 0].max(dim=1).values - foot_xy_world[:, :, 0].min(dim=1).values
-        y_violation = (self.cfg.target_foot_span_y - foot_y_span).clamp(min=0.0)
-        x_violation = (self.cfg.target_foot_span_x - foot_x_span).clamp(min=0.0)
-        rew_foot_spread = (y_violation + x_violation) * self.cfg.rew_scale_foot_spread
+        # Foot spread penalty: penalize feet gathering to center (Y-axis lateral span)
+        # Prevents robot from stabilizing by pulling legs inward under body
+        foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
+        foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
+        foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
+        span_violation = (self.cfg.target_foot_span - foot_span).clamp(min=0.0)
+        rew_foot_spread = span_violation * self.cfg.rew_scale_foot_spread  # [N]
 
-        # DOF acceleration penalty: suppresses joint vibration (Rudin 2021)
-        dof_acc = (self.joint_vel - self._last_joint_vel) / self.step_dt
-        rew_dof_acc = torch.sum(torch.square(dof_acc), dim=1) * self.cfg.rew_scale_dof_acc
-        self._last_joint_vel = self.joint_vel.clone()
-
-        # Action acceleration penalty: penalizes jittery action sequences (2nd derivative)
-        action_acc = self.actions - 2.0 * self._last_actions + self._last_last_actions
-        rew_action_acc = torch.sum(torch.square(action_acc), dim=1) * self.cfg.rew_scale_action_acc
-
-        # Foot slip penalty: contact foot moving laterally = sliding (Margolis 2022)
-        foot_lin_vel_w = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
-        foot_force_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]  # [N, 4]
-        foot_in_contact = (torch.abs(foot_force_z) > 1.0).float()
-        foot_slip_speed = torch.norm(foot_lin_vel_w, dim=-1) * foot_in_contact
-        rew_foot_slip = torch.sum(torch.square(foot_slip_speed), dim=1) * self.cfg.rew_scale_foot_slip
-
-        # All-feet-grounded penalty: forces at least one foot in air (prevents pure sliding)
-        n_feet_grounded = actual_contact.sum(dim=1)
-        rew_no_air = (n_feet_grounded >= 4).float() * self.cfg.rew_scale_no_air
-
-        # Foot clearance reward: swing foot should lift target height (Margolis 2022)
-        foot_pos_z = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]  # [N, 4]
-        foot_in_air = 1.0 - foot_in_contact
-        clearance_error = torch.square(foot_pos_z - self.cfg.target_foot_clearance) * foot_in_air
-        rew_foot_clearance = torch.sum(clearance_error, dim=1) * self.cfg.rew_scale_foot_clearance
-
-        # Stand-still penalty: when cmd≈0, penalize joint deviation from default (legged_gym)
-        cmd_zero = (torch.norm(self._commands[:, :2], dim=1) < 0.1).float()
-        joint_dev = torch.sum(torch.abs(self.joint_pos - self.robot.data.default_joint_pos), dim=1)
-        rew_stand_still = joint_dev * cmd_zero * self.cfg.rew_scale_stand_still
-
-        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
-                + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_dof_acc
-                + rew_action_acc + rew_foot_slip + rew_no_air + rew_foot_clearance + rew_stand_still)
+        return base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -265,6 +233,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         root_state = self.robot.data.default_root_state[env_ids]
         root_state[:, :3] += self.scene.env_origins[env_ids]
+        # bootstrap: start at command velocity so robot must learn to maintain it
+        root_state[:, 7] = self._commands[env_ids, 0]
+        root_state[:, 8] = self._commands[env_ids, 1]
 
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)
@@ -273,9 +244,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos[env_ids] = joint_pos
         self.joint_vel[env_ids] = joint_vel
         self._last_actions[env_ids] = 0.0
-        self._last_last_actions[env_ids] = 0.0
-        self._processed_actions[env_ids] = 0.0
-        self._last_joint_vel[env_ids] = 0.0
+        # randomize gait phase at reset to break synchronization
         self._gait_phase[env_ids] = torch.zeros(n, device=self.device).uniform_(0.0, 2.0 * math.pi)
 
 
@@ -312,12 +281,14 @@ def compute_rewards(
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
+    # exponential tracking rewards (sigma=0.25: nonzero gradient even when far from cmd)
     lin_vel_error = torch.sum(torch.square(commands[:, :2] - root_lin_vel_b[:, :2]), dim=1)
     rew_lin_vel = torch.exp(-lin_vel_error / 0.25) * rew_scale_lin_vel
 
     ang_vel_error = torch.square(commands[:, 2] - root_ang_vel_b[:, 2])
     rew_ang_vel = torch.exp(-ang_vel_error / 0.25) * rew_scale_ang_vel
 
+    # movement bonus: proportional reward for any velocity along command direction
     cmd_dir = commands[:, :2] / (torch.norm(commands[:, :2], dim=1, keepdim=True).clamp(min=0.1))
     vel_proj = (root_lin_vel_b[:, :2] * cmd_dir).sum(dim=1).clamp(min=0.0, max=2.0)
     rew_movement = vel_proj * rew_scale_movement
@@ -330,12 +301,12 @@ def compute_rewards(
     rew_action_rate = torch.sum(torch.square(actions - last_actions), dim=1) * rew_scale_action_rate
     rew_termination = reset_terminated.float() * rew_scale_termination
 
-    # air_time threshold 0.4s (0.1→0.4): 의미있는 stride만 보상. cmd_has_vel gating 제거
+    cmd_has_vel = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
     rew_air_time = torch.sum(
-        (last_air_time - 0.4).clamp(min=0.0) * first_contact.float(), dim=1
-    ) * rew_scale_air_time
+        (last_air_time - 0.1).clamp(min=0.0) * first_contact.float(), dim=1
+    ) * rew_scale_air_time * cmd_has_vel
 
-    living = (
+    total = (
         rew_alive
         + rew_lin_vel
         + rew_ang_vel
@@ -346,7 +317,7 @@ def compute_rewards(
         + rew_joint_vel
         + rew_torque
         + rew_action_rate
+        + rew_termination
         + rew_air_time
     )
-    # termination penalty is outside clamp so it always acts as a deterrent
-    return living.clamp(min=0.0) + rew_termination
+    return total.clamp(min=0.0)

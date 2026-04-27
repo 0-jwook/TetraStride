@@ -48,7 +48,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
-    termination_height: float = 0.05
+    termination_height: float = 0.15
     target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
     target_foot_span: float = 0.18     # 발 좌우 간격 최소 기준 (미달 시 패널티)
 
@@ -73,3 +73,4 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_joint_default: float = 0.0     # 어깨 관절 dead zone 패널티
     rew_scale_upright: float = 0.3           # IMU 직립 보상 (projected_gravity_b z축 기반)
     rew_scale_foot_spread: float = 0.0       # 발 좌우 간격 패널티 (Stance에서 활성화)
+    rew_scale_foot_slip: float = 0.0         # 발 미끄러짐 패널티 (Margolis 2022)

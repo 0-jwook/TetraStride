@@ -185,15 +185,22 @@ class QuadrupedalBotEnv(DirectRLEnv):
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
         rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
-        # Foot spread penalty: penalize feet gathering to center (Y-axis lateral span)
-        # Prevents robot from stabilizing by pulling legs inward under body
+        # Foot spread penalty (Y-axis only, 15차 방식 유지)
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
         foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
         foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
         span_violation = (self.cfg.target_foot_span - foot_span).clamp(min=0.0)
         rew_foot_spread = span_violation * self.cfg.rew_scale_foot_spread  # [N]
 
-        return base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread
+        # Foot slip penalty: contact foot moving laterally = sliding (Margolis 2022)
+        foot_lin_vel_w = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
+        foot_force_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]  # [N, 4]
+        foot_in_contact = (torch.abs(foot_force_z) > 1.0).float()
+        foot_slip_speed = torch.norm(foot_lin_vel_w, dim=-1) * foot_in_contact
+        rew_foot_slip = torch.sum(torch.square(foot_slip_speed), dim=1) * self.cfg.rew_scale_foot_slip
+
+        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
+                + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip)
 
     # ------------------------------------------------------------------
     # Done / Termination

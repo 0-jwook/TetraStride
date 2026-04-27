@@ -35,3 +35,4 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_default: float = -0.5      # 어깨 0.2 rad 초과 이탈 시 패널티 (완화)
     rew_scale_upright: float = 1.0            # IMU 직립 보상: 완전 직립=1.0, 넘어짐=0
     rew_scale_foot_spread: float = 0.0        # Stage1: 비활성화 (서기 학습 우선, Stage2부터 적용)
+    rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화

@@ -48,7 +48,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
 
     # --- termination ---
-    termination_height: float = 0.15   # 0.08→0.15: 플랭크/크라우치 즉시 종료
+    termination_height: float = 0.05
     target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
     target_foot_span: float = 0.18     # 발 좌우 간격 최소 기준 (미달 시 패널티)
 

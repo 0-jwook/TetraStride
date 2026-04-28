@@ -30,7 +30,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    rew_scale_body_height: float = -3.0         # 높이 유지: -1.0→-3.0 (ep_len 57 정체 → 높이 패널티 강화)
+    target_body_height: float = 0.21            # 0.18→0.21: 보상이 0.189m 평형에서 비활성이었음 → 활성화
+    rew_scale_body_height: float = -5.0         # -3.0→-5.0: 목표 높이 신호 강화 (비활성 보상 문제 해결)
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
     rew_scale_lin_vel_xy: float = -0.3         # 제자리 유지: 수평 이동 패널티 (완화)
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티 (완화)

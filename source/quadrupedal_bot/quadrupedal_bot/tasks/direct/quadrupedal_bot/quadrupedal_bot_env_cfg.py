@@ -15,10 +15,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     episode_length_s: float = 10.0
 
     # --- spaces ---
-    # obs: lin_vel(3) + ang_vel(3) + proj_gravity(3) + commands(3)
-    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 50
+    # obs: ang_vel(3) + proj_gravity(3) + commands(3)
+    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 47
     action_space: int = 12
-    observation_space: int = 50
+    observation_space: int = 47
     state_space: int = 0
 
     # --- simulation ---
@@ -62,7 +62,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
     rew_scale_action_rate: float = -0.01
-    rew_scale_termination: float = -200.0  # outside clamp: always applies when terminated
+    rew_scale_termination: float = -30.0   # PHYSICS §2.3: |term| > alive×30 but < alive×1000×0.05
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase

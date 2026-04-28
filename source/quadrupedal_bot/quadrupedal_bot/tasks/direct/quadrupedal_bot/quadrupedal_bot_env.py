@@ -93,7 +93,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         obs = torch.cat(
             [
-                self.robot.data.root_lin_vel_b,                      # [N, 3]
                 self.robot.data.root_ang_vel_b,                      # [N, 3]
                 self.robot.data.projected_gravity_b,                 # [N, 3]
                 self._commands,                                      # [N, 3]
@@ -209,6 +208,26 @@ class QuadrupedalBotEnv(DirectRLEnv):
         cmd_zero = (torch.norm(self._commands[:, :2], dim=1) < 0.1).float()
         joint_dev = torch.sum(torch.abs(self.joint_pos - self.robot.data.default_joint_pos), dim=1)
         rew_stand_still = joint_dev * cmd_zero * self.cfg.rew_scale_stand_still
+
+        with torch.no_grad():
+            rew_alive_log = self.cfg.rew_scale_alive * (1.0 - self.reset_terminated.float())
+            rew_gravity_log = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1) * self.cfg.rew_scale_gravity
+            rew_termination_log = self.reset_terminated.float() * self.cfg.rew_scale_termination
+            per_step_net = (rew_alive_log + rew_upright + rew_gravity_log + rew_foot_slip
+                            + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc)
+            self.extras["log"] = {
+                "rew/alive": rew_alive_log.mean().item(),
+                "rew/upright": rew_upright.mean().item(),
+                "rew/gravity": rew_gravity_log.mean().item(),
+                "rew/foot_slip": rew_foot_slip.mean().item(),
+                "rew/joint_default": rew_joint_default.mean().item(),
+                "rew/foot_spread": rew_foot_spread.mean().item(),
+                "rew/stand_still": rew_stand_still.mean().item(),
+                "rew/dof_acc": rew_dof_acc.mean().item(),
+                "rew/termination": rew_termination_log.mean().item(),
+                "diag/per_step_net": per_step_net.mean().item(),
+                "diag/term_ratio": self.reset_terminated.float().mean().item(),
+            }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
                 + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip

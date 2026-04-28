@@ -43,8 +43,8 @@ SPOT_MICRO_CFG = ArticulationCfg(
         pos=(0.0, 0.0, 0.25),
         joint_pos={
             ".*_shoulder": 0.0,
-            ".*_leg": 0.5,
-            ".*_foot": -0.5,
+            ".*_leg": 0.3,
+            ".*_foot": -0.3,
         },
         joint_vel={".*": 0.0},
     ),
@@ -54,7 +54,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=1.5,
             saturation_effort=1.5,
             velocity_limit=6.0,
-            stiffness=15.0,
+            stiffness=5.0,
             damping=0.25,
         ),
         "leg_joints": DCMotorCfg(
@@ -62,7 +62,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=1.5,
             saturation_effort=1.5,
             velocity_limit=6.0,
-            stiffness=15.0,
+            stiffness=5.0,
             damping=0.25,
         ),
         "foot_joints": DCMotorCfg(
@@ -70,7 +70,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=1.5,
             saturation_effort=1.5,
             velocity_limit=6.0,
-            stiffness=15.0,
+            stiffness=5.0,
             damping=0.25,
         ),
     },

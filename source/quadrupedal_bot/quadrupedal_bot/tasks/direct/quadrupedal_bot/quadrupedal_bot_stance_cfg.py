@@ -35,3 +35,4 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 1.0            # IMU 직립 보상: 완전 직립=1.0, 넘어짐=0
     rew_scale_foot_spread: float = -2.0       # 발 안쪽 모임 방지 (sliding survival 차단)
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화
+    rew_scale_stand_still: float = -0.05     # 0.5→0.05: 중력 새그(0.077rad) 필요 편차 허용

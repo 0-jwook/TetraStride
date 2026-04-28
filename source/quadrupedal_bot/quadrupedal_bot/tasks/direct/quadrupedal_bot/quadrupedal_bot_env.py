@@ -242,6 +242,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/dof_acc": rew_dof_acc.mean().item(),
                 "rew/dof_pos_limits": rew_dof_pos_limits.mean().item(),
                 "rew/contact_forces": rew_contact_forces.mean().item(),
+                "rew/body_height": rew_body_height.mean().item(),
+                "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
                 "rew/termination": rew_termination_log.mean().item(),
                 "diag/per_step_net": per_step_net.mean().item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),

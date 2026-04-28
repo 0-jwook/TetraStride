@@ -30,12 +30,12 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    rew_scale_body_height: float = -1.0         # 높이 유지 인센티브: 0.18m 아래로 내려가면 패널티
+    rew_scale_body_height: float = -3.0         # 높이 유지: -1.0→-3.0 (ep_len 57 정체 → 높이 패널티 강화)
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
     rew_scale_lin_vel_xy: float = -0.3         # 제자리 유지: 수평 이동 패널티 (완화)
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티 (완화)
     rew_scale_joint_default: float = -0.5      # 어깨 0.2 rad 초과 이탈 시 패널티 (완화)
-    rew_scale_upright: float = 1.0            # IMU 직립 보상: 완전 직립=1.0, 넘어짐=0
+    rew_scale_upright: float = 2.0            # 1.0→2.0: ep_len 57 정체 돌파, 직립 유지 강화
     rew_scale_foot_spread: float = -2.0       # 발 안쪽 모임 방지 (sliding survival 차단)
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화
     rew_scale_stand_still: float = -0.05     # 0.5→0.05: 중력 새그(0.077rad) 필요 편차 허용

@@ -41,6 +41,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- action ---
     action_scale: float = 0.25
     action_smoothing: float = 0.8
+    init_noise_scale: float = 0.03   # 초기화 관절 노이즈 (0.1→0.03: 0.7N·m로 복원 가능한 범위)
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.2, 0.6)

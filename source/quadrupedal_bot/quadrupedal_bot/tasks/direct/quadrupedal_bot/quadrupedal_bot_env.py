@@ -204,6 +204,21 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_dof_acc = torch.sum(torch.square(dof_acc), dim=1) * self.cfg.rew_scale_dof_acc
         self._last_joint_vel = self.joint_vel.clone()
 
+        # DOF position limits penalty (legged_gym: _reward_dof_pos_limits)
+        # soft_joint_pos_limits: [1, 12, 2] — 0.9x of hard limits via soft_joint_pos_limit_factor=0.9
+        soft_lower = self.robot.data.soft_joint_pos_limits[:, :, 0]
+        soft_upper = self.robot.data.soft_joint_pos_limits[:, :, 1]
+        out_of_lower = (soft_lower - self.joint_pos).clamp(min=0.0)
+        out_of_upper = (self.joint_pos - soft_upper).clamp(min=0.0)
+        rew_dof_pos_limits = (out_of_lower + out_of_upper).sum(dim=1) * self.cfg.rew_scale_dof_pos_limits
+
+        # Foot contact force penalty (legged_gym: _reward_feet_contact_forces)
+        # Penalize excessive foot impact forces above threshold to protect servos and reduce bounce
+        foot_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
+        foot_force_mag = torch.norm(foot_forces, dim=-1)  # [N, 4]
+        excess_force = (foot_force_mag - self.cfg.max_foot_contact_force).clamp(min=0.0)
+        rew_contact_forces = excess_force.sum(dim=1) * self.cfg.rew_scale_contact_forces
+
         # Stand still penalty: penalize joint deviation from default when cmd ≈ 0 (legged_gym standard)
         cmd_zero = (torch.norm(self._commands[:, :2], dim=1) < 0.1).float()
         joint_dev = torch.sum(torch.abs(self.joint_pos - self.robot.data.default_joint_pos), dim=1)
@@ -214,7 +229,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
             rew_gravity_log = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1) * self.cfg.rew_scale_gravity
             rew_termination_log = self.reset_terminated.float() * self.cfg.rew_scale_termination
             per_step_net = (rew_alive_log + rew_upright + rew_gravity_log + rew_foot_slip
-                            + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc)
+                            + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
+                            + rew_dof_pos_limits + rew_contact_forces)
             self.extras["log"] = {
                 "rew/alive": rew_alive_log.mean().item(),
                 "rew/upright": rew_upright.mean().item(),
@@ -224,6 +240,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/foot_spread": rew_foot_spread.mean().item(),
                 "rew/stand_still": rew_stand_still.mean().item(),
                 "rew/dof_acc": rew_dof_acc.mean().item(),
+                "rew/dof_pos_limits": rew_dof_pos_limits.mean().item(),
+                "rew/contact_forces": rew_contact_forces.mean().item(),
                 "rew/termination": rew_termination_log.mean().item(),
                 "diag/per_step_net": per_step_net.mean().item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
@@ -231,7 +249,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
                 + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
-                + rew_dof_acc + rew_stand_still)
+                + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces)
 
     # ------------------------------------------------------------------
     # Done / Termination

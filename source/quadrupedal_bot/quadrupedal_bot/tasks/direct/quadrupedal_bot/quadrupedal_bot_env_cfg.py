@@ -77,3 +77,6 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_foot_slip: float = 0.0         # 발 미끄러짐 패널티 (Margolis 2022)
     rew_scale_dof_acc: float = -2.5e-7       # DOF 가속도 패널티 (Rudin 2021 표준)
     rew_scale_stand_still: float = -0.5      # cmd≈0 시 관절 이탈 패널티 (legged_gym 표준)
+    rew_scale_dof_pos_limits: float = 0.0    # 관절 soft limit 초과 패널티 (legged_gym: _reward_dof_pos_limits)
+    rew_scale_contact_forces: float = 0.0    # 발 착지 충격력 초과 패널티 (legged_gym: _reward_feet_contact_forces)
+    max_foot_contact_force: float = 50.0     # N, 충격력 패널티 기준값 (정적 3.68N × ~13배 마진)

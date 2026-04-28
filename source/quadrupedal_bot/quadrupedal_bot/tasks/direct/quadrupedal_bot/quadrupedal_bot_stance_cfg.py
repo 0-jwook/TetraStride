@@ -36,3 +36,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_foot_spread: float = -2.0       # 발 안쪽 모임 방지 (sliding survival 차단)
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화
     rew_scale_stand_still: float = -0.05     # 0.5→0.05: 중력 새그(0.077rad) 필요 편차 허용
+    rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
+    rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)

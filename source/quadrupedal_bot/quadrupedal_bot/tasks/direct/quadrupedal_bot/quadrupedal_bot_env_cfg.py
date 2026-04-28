@@ -75,6 +75,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_upright: float = 0.3           # IMU 직립 보상 (projected_gravity_b z축 기반)
     rew_scale_foot_spread: float = 0.0       # 발 좌우 간격 패널티 (Stance에서 활성화)
     rew_scale_foot_slip: float = 0.0         # 발 미끄러짐 패널티 (Margolis 2022)
+    freeze_gait_phase: bool = False   # Stance 전용: gait clock 동결 (명령=0에서 주기적 불안정 방지)
     rew_scale_dof_acc: float = -2.5e-7       # DOF 가속도 패널티 (Rudin 2021 표준)
     rew_scale_stand_still: float = -0.5      # cmd≈0 시 관절 이탈 패널티 (legged_gym 표준)
     rew_scale_dof_pos_limits: float = 0.0    # 관절 soft limit 초과 패널티 (legged_gym: _reward_dof_pos_limits)

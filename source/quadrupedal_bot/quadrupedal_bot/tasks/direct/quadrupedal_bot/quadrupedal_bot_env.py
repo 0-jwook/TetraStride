@@ -77,7 +77,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.action_smoothing * self.actions
             + (1.0 - self.cfg.action_smoothing) * self._processed_actions
         )
-        self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
+        if not self.cfg.freeze_gait_phase:
+            self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
 
     def _apply_action(self) -> None:
         target = self.robot.data.default_joint_pos + self._processed_actions * self.cfg.action_scale

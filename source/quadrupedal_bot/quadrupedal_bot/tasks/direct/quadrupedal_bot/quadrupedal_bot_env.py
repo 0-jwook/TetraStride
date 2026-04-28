@@ -232,6 +232,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
             per_step_net = (rew_alive_log + rew_upright + rew_gravity_log + rew_foot_slip
                             + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
                             + rew_dof_pos_limits + rew_contact_forces)
+            # torque saturation: fraction of joints outputting ≥ 95% of effort_limit
+            effort_limit = 1.5  # N·m, matches spot_micro_cfg effort_limit
+            torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
+            # termination cause breakdown
+            body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()
+            body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > 0.0).float()
             self.extras["log"] = {
                 "rew/alive": rew_alive_log.mean().item(),
                 "rew/upright": rew_upright.mean().item(),
@@ -245,6 +251,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/contact_forces": rew_contact_forces.mean().item(),
                 "rew/body_height": rew_body_height.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
+                "diag/body_height_min": self.robot.data.root_pos_w[:, 2].min().item(),
+                "diag/torque_sat_ratio": torque_sat_ratio.item(),
+                "diag/term_height_ratio": body_fallen_now.mean().item(),
+                "diag/term_tilt_ratio": body_tilted_now.mean().item(),
                 "rew/termination": rew_termination_log.mean().item(),
                 "diag/per_step_net": per_step_net.mean().item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),

@@ -16,7 +16,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # 보상: 접촉 스케줄 + 자세 유지 + 약한 속도 추적
     rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 1.5
+    rew_scale_lin_vel: float = 4.0        # 1.5→4.0: 전진 속도 추적 대폭 강화
     rew_scale_ang_vel: float = 0.05
     rew_scale_lin_vel_z: float = -2.0
     rew_scale_ang_vel_xy: float = -0.05
@@ -26,8 +26,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_action_rate: float = -0.01
     rew_scale_termination: float = 0.0
     rew_scale_air_time: float = 3.0
-    rew_scale_movement: float = 1.5
-    rew_scale_gait: float = 2.0          # 5.0→2.0: gait 강제 완화
+    rew_scale_movement: float = 3.0       # 1.5→3.0: 전진 이동 보상 강화
+    rew_scale_gait: float = 3.0           # 2.0→3.0: 트롯 보행 패턴 강화
     # Stage1에서 누락됐던 자세 안정 보상 추가
     rew_scale_upright: float = 0.5       # IMU 직립 보상 (Stage1의 50%)
     rew_scale_ang_vel_z: float = -0.1    # yaw 스핀 패널티

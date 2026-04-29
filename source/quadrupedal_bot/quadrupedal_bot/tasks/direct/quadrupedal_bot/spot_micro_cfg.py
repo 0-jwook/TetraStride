@@ -12,9 +12,10 @@ from isaaclab.assets.articulation import ArticulationCfg
 #   left  thigh/calf sim+  →  servo-  (direction=-1, sim+ = forward, servo+ = backward)
 #   right thigh/calf sim+  →  servo+  (direction=+1, sim+ = forward, servo+ = forward)
 #
-# Standing pose (body z ≈ 0.22 m):
-#   leg = 0.5 rad (thigh slightly forward),  foot = -0.5 rad (calf roughly vertical)
-#   Vertical reach: cos(0.5)*0.1075 + cos(0)*0.130 ≈ 0.094 + 0.130 = 0.224 m
+# Standing pose (body z ≈ 0.17 m, inverted-knee ">"):
+#   leg = 0.873 rad (50° forward),  foot = -1.559 rad (-89°)
+#   Vertical reach: cos(0.873)*0.1075 + cos(-0.686)*0.130 ≈ 0.068 + 0.101 = 0.169 m
+#   x_toe ≈ 0 (balanced), knee angle ≈ 89° — kp=12 required for knee moment 1.07 N·m
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -40,11 +41,11 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.25),
+        pos=(0.0, 0.0, 0.20),
         joint_pos={
             ".*_shoulder": 0.0,
-            ".*_leg": 0.4,
-            ".*_foot": -0.73,
+            ".*_leg": 0.873,
+            ".*_foot": -1.559,
         },
         joint_vel={".*": 0.0},
     ),
@@ -62,16 +63,16 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=2.0,
             saturation_effort=2.0,
             velocity_limit=6.0,
-            stiffness=5.0,
-            damping=0.25,
+            stiffness=12.0,
+            damping=0.3,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
             effort_limit=2.0,
             saturation_effort=2.0,
             velocity_limit=6.0,
-            stiffness=5.0,
-            damping=0.25,
+            stiffness=12.0,
+            damping=0.3,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

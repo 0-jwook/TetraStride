@@ -164,9 +164,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         contact_wrong = ((1.0 - expected_contact) * actual_contact).sum(dim=1)
         rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait  # [N]
 
-        # Body height penalty: penalize crouching/plank below target height
+        # Body height reward: Gaussian centered at target — closer = more reward
         body_height = self.robot.data.root_pos_w[:, 2]
-        rew_body_height = (self.cfg.target_body_height - body_height).clamp(min=0.0) * self.cfg.rew_scale_body_height
+        height_error = (body_height - self.cfg.target_body_height).abs()
+        rew_body_height = torch.exp(-height_error / 0.02) * self.cfg.rew_scale_body_height
 
         # Non-foot contact penalty: penalize knee/belly touching ground
         # threshold=20N: 정상 서기 시 정강이 스침(~1-5N)은 무시, 실제 무게를 싣는 무릎보행(>20N)만 감지

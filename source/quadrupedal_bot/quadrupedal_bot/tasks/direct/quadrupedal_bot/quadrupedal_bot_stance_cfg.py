@@ -9,7 +9,6 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
 
-    # 종료 조건 완화: body_z 0.15→0.12m (3cm 마진, 진단된 ep_len 정체 원인)
     termination_height: float = 0.12
 
     # 속도 명령 없음 — 항상 제자리
@@ -30,8 +29,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    target_body_height: float = 0.233           # leg=0.3,foot=-0.3 자연 높이(0.233m) — target≈natural, 기울기 최소화
-    rew_scale_body_height: float = -5.0         # -3.0→-5.0: 목표 높이 신호 강화 (비활성 보상 문제 해결)
+    target_body_height: float = 0.19            # 2.5kg, leg=0.83 자연 평형점 0.195m
+    rew_scale_body_height: float = 2.0          # Gaussian 보상: 목표 근처 최대 +2.0/step, 멀수록 감소
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
     rew_scale_lin_vel_xy: float = -0.3         # 제자리 유지: 수평 이동 패널티 (완화)
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티 (완화)
@@ -43,3 +42,4 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거
     rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
     rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)
+    action_scale: float = 0.25               # kp=5, 2.5kg: 0.49+1.25=1.74 N·m < 2.0 ✓ 포화 없음

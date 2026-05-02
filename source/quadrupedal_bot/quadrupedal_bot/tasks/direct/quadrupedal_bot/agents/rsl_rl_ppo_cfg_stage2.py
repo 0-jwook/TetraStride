@@ -12,6 +12,10 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
+    resume = True
+    load_run = "stage1_session32"
+    load_checkpoint = "model_4999.pt"
+
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지
         actor_obs_normalization=True,

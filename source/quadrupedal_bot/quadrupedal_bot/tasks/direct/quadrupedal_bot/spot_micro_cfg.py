@@ -14,16 +14,15 @@ from isaaclab.assets.articulation import ArticulationCfg
 #
 # Standing pose (body z ≈ 0.233 m, vertical calf):
 #   leg = 0.3 rad (17°), foot = -0.3 rad, calf_angle = 0° → zero knee moment
-#   Vertical reach: cos(0.3)*0.1075 + cos(0)*0.130 ≈ 0.103 + 0.130 = 0.233 m
-#   hip gravity torque = 0.41 N·m (21% effort_limit) — only stable config
+#   hip gravity torque = 0.41 N·m (20.7% effort_limit) — Session 32 성공 설정
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
-        asset_path="/home/wodnr/Downloads/spot_micro.urdf",
+        asset_path="/home/wodnr/Downloads/spot_micro_light.urdf",  # 2.5kg: hip 토크 24%, 포화 없음
         fix_base=False,
         merge_fixed_joints=True,
         root_link_name="base_link",
-        joint_drive=None,  # DCMotorCfg가 액추에이터를 담당하므로 URDF 드라이브 비활성화
+        joint_drive=None,
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -41,11 +40,11 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.25),
+        pos=(0.0, 0.0, 0.22),
         joint_pos={
             ".*_shoulder": 0.0,
-            ".*_leg": 0.3,
-            ".*_foot": -0.3,
+            ".*_leg": 0.83,
+            ".*_foot": -0.83,
         },
         joint_vel={".*": 0.0},
     ),
@@ -77,17 +76,4 @@ SPOT_MICRO_CFG = ArticulationCfg(
     },
     soft_joint_pos_limit_factor=0.9,
 )
-"""Configuration for the Spot Micro quadruped robot.
-
-Robot: Spot Micro (hobby quadruped, 12 DOF)
-URDF:  /home/wodnr/Downloads/spot_micro.urdf
-       meshes at /home/wodnr/Desktop/urdf/stl/
-
-Isaac Lab converts URDF → USD automatically on first run and caches to ~/.cache/isaaclab/.
-If the URDF or meshes change, delete the cache and restart.
-
-Actuator model: DCMotor (implicit PD).
-Tune stiffness/damping if the robot oscillates or is too stiff at start.
-
-Sim-to-real servo mapping: see scripts/real_robot_deploy.py
-"""
+"""Configuration for the Spot Micro quadruped robot."""

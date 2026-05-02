@@ -12,9 +12,10 @@ from isaaclab.assets.articulation import ArticulationCfg
 #   left  thigh/calf sim+  →  servo-  (direction=-1, sim+ = forward, servo+ = backward)
 #   right thigh/calf sim+  →  servo+  (direction=+1, sim+ = forward, servo+ = forward)
 #
-# Standing pose (body z ≈ 0.233 m, vertical calf):
-#   leg = 0.3 rad (17°), foot = -0.3 rad, calf_angle = 0° → zero knee moment
-#   hip gravity torque = 0.41 N·m (20.7% effort_limit) — Session 32 성공 설정
+# Standing pose (body z ≈ 0.19~0.20 m, bent knee like real robot):
+#   leg = 0.83 rad (47°), foot = -0.83 rad — real robot measurement Q2=-0.83, Q3=1.66
+#   hip gravity torque ≈ 1.03 N·m — kp=20: gravity_sag=0.052 rad (vs kp=5: 0.206 rad)
+#   equilibrium torque = 1.03 N·m < effort_limit=2.0 → NO saturation at standing pose
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -54,24 +55,24 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=2.0,
             saturation_effort=2.0,
             velocity_limit=6.0,
-            stiffness=5.0,
-            damping=0.25,
+            stiffness=15.0,   # 5→15: 어깨 중력 토크 작음 (abduction), 낮게 설정
+            damping=0.5,
         ),
         "leg_joints": DCMotorCfg(
             joint_names_expr=[".*_leg"],
             effort_limit=2.0,
             saturation_effort=2.0,
             velocity_limit=6.0,
-            stiffness=5.0,
-            damping=0.25,
+            stiffness=20.0,   # 5→20: gravity_sag 0.206→0.052 rad, crouch-to-survive 방지
+            damping=0.6,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
             effort_limit=2.0,
             saturation_effort=2.0,
             velocity_limit=6.0,
-            stiffness=5.0,
-            damping=0.25,
+            stiffness=20.0,   # 5→20: knee joint 동일 강화
+            damping=0.5,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

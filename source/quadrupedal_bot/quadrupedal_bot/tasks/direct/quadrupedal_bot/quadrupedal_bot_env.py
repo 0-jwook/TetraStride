@@ -165,9 +165,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait  # [N]
 
         # Body height reward: Gaussian centered at target — closer = more reward
+        # sigma=0.05: at 5cm error → exp(-1.0)=0.37, at 10cm → exp(-2.0)=0.14
         body_height = self.robot.data.root_pos_w[:, 2]
         height_error = (body_height - self.cfg.target_body_height).abs()
-        rew_body_height = torch.exp(-height_error / 0.02) * self.cfg.rew_scale_body_height
+        rew_body_height = torch.exp(-height_error / 0.05) * self.cfg.rew_scale_body_height
 
         # Non-foot contact penalty: penalize knee/belly touching ground
         # threshold=20N: 정상 서기 시 정강이 스침(~1-5N)은 무시, 실제 무게를 싣는 무릎보행(>20N)만 감지
@@ -234,7 +235,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                             + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
                             + rew_dof_pos_limits + rew_contact_forces)
             # torque saturation: fraction of joints outputting ≥ 95% of effort_limit
-            effort_limit = 1.5  # N·m, matches spot_micro_cfg effort_limit
+            effort_limit = 2.0  # N·m, matches spot_micro_cfg effort_limit
             torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
             # termination cause breakdown
             body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()

@@ -60,16 +60,16 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
         "leg_joints": DCMotorCfg(
             joint_names_expr=[".*_leg"],
-            effort_limit=2.0,
-            saturation_effort=2.0,
+            effort_limit=10.0,  # 2.5kg: hip 토크 24% → 0.24 * 4.5 N·m = 1.08 N·m
+            saturation_effort=10.0,
             velocity_limit=6.0,
             stiffness=20.0,   # 5→20: gravity_sag 0.206→0.052 rad, crouch-to-survive 방지
             damping=0.6,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
-            effort_limit=2.0,
-            saturation_effort=2.0,
+            effort_limit=10.0,  # 2.5kg: hip 토크 24% → 0.24 * 4.5 N·m = 1.08 N·m
+            saturation_effort=10.0,
             velocity_limit=6.0,
             stiffness=20.0,   # 5→20: knee joint 동일 강화
             damping=0.5,

@@ -67,7 +67,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_air_time: float = 6.0     # strongly incentivize leg lifting
     rew_scale_movement: float = 3.0     # 2→3: stronger linear gradient toward forward motion
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase
-    rew_scale_body_height: float = -3.0   # 몸통 낮으면 페널티 (플랭크 방지)
+    rew_scale_body_height: float = -8.0   # 몸통 낮으면 페널티 (플랭크 방지)
     rew_scale_non_foot_contact: float = -1.0  # 발 외 부위(무릎/배) 지면 접촉 페널티
     rew_scale_lin_vel_xy: float = 0.0        # 수평 이동 패널티 (Stance에서만 활성화)
     rew_scale_ang_vel_z: float = 0.0         # yaw 회전 패널티 (Stance에서만 활성화)

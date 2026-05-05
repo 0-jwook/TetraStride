@@ -14,7 +14,7 @@ from isaaclab.assets.articulation import ArticulationCfg
 #
 # Standing pose (body z ≈ 0.19~0.20 m, bent knee like real robot):
 #   leg = 0.83 rad (47°), foot = -0.83 rad — real robot measurement Q2=-0.83, Q3=1.66
-#   kp=20, effort_limit=10: gravity_sag=0.052 rad, ep_len=999 달성 확인된 안정 설정
+#   전 관절 kp=20, effort_limit=10으로 통일 — 어깨 약함이 다리 모임의 근본 원인이었음
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -51,10 +51,10 @@ SPOT_MICRO_CFG = ArticulationCfg(
     actuators={
         "shoulder_joints": DCMotorCfg(
             joint_names_expr=[".*_shoulder"],
-            effort_limit=2.0,
-            saturation_effort=2.0,
+            effort_limit=10.0,   # 2.0→10.0: 어깨 약해서 다리 모임 → leg/foot과 동일하게
+            saturation_effort=10.0,
             velocity_limit=6.0,
-            stiffness=15.0,
+            stiffness=20.0,      # 15→20: leg/foot과 통일
             damping=0.5,
         ),
         "leg_joints": DCMotorCfg(

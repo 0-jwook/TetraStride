@@ -14,8 +14,8 @@ from isaaclab.assets.articulation import ArticulationCfg
 #
 # Standing pose (body z ≈ 0.19~0.20 m, bent knee like real robot):
 #   leg = 0.83 rad (47°), foot = -0.83 rad — real robot measurement Q2=-0.83, Q3=1.66
-#   hip gravity torque ≈ 1.03 N·m — kp=20: gravity_sag=0.052 rad (vs kp=5: 0.206 rad)
-#   equilibrium torque = 1.03 N·m < effort_limit=2.0 → NO saturation at standing pose
+#   kp=200, effort_limit=500: 사실상 강체 위치제어 — gravity_sag≈0, 힘 부족 문제 완전 제거
+#   목적: 힘 제약 없이 어떤 자세/보상이 최적인지 확인 (sim-to-real은 이후 단계)
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -52,27 +52,27 @@ SPOT_MICRO_CFG = ArticulationCfg(
     actuators={
         "shoulder_joints": DCMotorCfg(
             joint_names_expr=[".*_shoulder"],
-            effort_limit=2.0,
-            saturation_effort=2.0,
-            velocity_limit=6.0,
-            stiffness=15.0,   # 5→15: 어깨 중력 토크 작음 (abduction), 낮게 설정
-            damping=0.5,
+            effort_limit=500.0,
+            saturation_effort=500.0,
+            velocity_limit=20.0,
+            stiffness=200.0,  # 강체 수준 위치제어
+            damping=5.0,
         ),
         "leg_joints": DCMotorCfg(
             joint_names_expr=[".*_leg"],
-            effort_limit=10.0,  # 2.5kg: hip 토크 24% → 0.24 * 4.5 N·m = 1.08 N·m
-            saturation_effort=10.0,
-            velocity_limit=6.0,
-            stiffness=20.0,   # 5→20: gravity_sag 0.206→0.052 rad, crouch-to-survive 방지
-            damping=0.6,
+            effort_limit=500.0,
+            saturation_effort=500.0,
+            velocity_limit=20.0,
+            stiffness=200.0,  # gravity_sag≈0, 힘 제약 완전 제거
+            damping=5.0,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
-            effort_limit=10.0,  # 2.5kg: hip 토크 24% → 0.24 * 4.5 N·m = 1.08 N·m
-            saturation_effort=10.0,
-            velocity_limit=6.0,
-            stiffness=20.0,   # 5→20: knee joint 동일 강화
-            damping=0.5,
+            effort_limit=500.0,
+            saturation_effort=500.0,
+            velocity_limit=20.0,
+            stiffness=200.0,
+            damping=5.0,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

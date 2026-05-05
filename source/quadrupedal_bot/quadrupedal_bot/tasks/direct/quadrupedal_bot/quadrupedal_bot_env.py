@@ -235,7 +235,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                             + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
                             + rew_dof_pos_limits + rew_contact_forces)
             # torque saturation: fraction of joints outputting ≥ 95% of effort_limit
-            effort_limit = 10.0  # N·m, leg/foot effort_limit (shoulder=2.0, leg/foot=10.0)
+            effort_limit = 500.0  # N·m, 강체 수준 (힘 제약 제거 실험)
             torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
             # termination cause breakdown
             body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()

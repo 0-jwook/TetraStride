@@ -301,6 +301,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self._commands[env_ids, 2] = torch.zeros(n, device=self.device).uniform_(
             *self.cfg.cmd_ang_vel_z_range
         )
+        # rel_standing_envs: zero_command_prob 비율의 env는 cmd=(0,0,0) 강제 (제자리 서기)
+        if self.cfg.zero_command_prob > 0.0:
+            zero_mask = torch.rand(n, device=self.device) < self.cfg.zero_command_prob
+            self._commands[env_ids[zero_mask]] = 0.0
 
         joint_pos = self.robot.data.default_joint_pos[env_ids]
         joint_pos = joint_pos + torch.randn_like(joint_pos) * self.cfg.init_noise_scale

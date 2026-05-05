@@ -9,10 +9,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     episode_length_s: float = 10.0
 
-    # 낮은 속도 명령 (서서히 이동 유도)
-    cmd_lin_vel_x_range: tuple = (0.1, 0.4)
-    cmd_lin_vel_y_range: tuple = (-0.1, 0.1)
-    cmd_ang_vel_z_range: tuple = (-0.2, 0.2)
+    # CCP velocity commands: 전진/후진/좌우/회전 전방향 학습
+    cmd_lin_vel_x_range: tuple = (-1.0, 1.0)
+    cmd_lin_vel_y_range: tuple = (-0.5, 0.5)
+    cmd_ang_vel_z_range: tuple = (-1.0, 1.0)
+    zero_command_prob: float = 0.02   # 2%는 cmd=(0,0,0) → 제자리 서기 병행 학습
 
     # 보상: 접촉 스케줄 + 자세 유지 + 약한 속도 추적
     rew_scale_alive: float = 0.5
@@ -32,4 +33,4 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 0.5       # IMU 직립 보상 (Stage1의 50%)
     rew_scale_ang_vel_z: float = -0.1    # yaw 스핀 패널티
     rew_scale_joint_default: float = -0.2  # 어깨 dead zone 패널티
-    rew_scale_foot_spread: float = -2.0  # 발 좌우 간격 패널티 (Stage1의 40%)
+    rew_scale_foot_spread: float = -5.0  # -2→-5: 발 중앙 모임 방지 강화

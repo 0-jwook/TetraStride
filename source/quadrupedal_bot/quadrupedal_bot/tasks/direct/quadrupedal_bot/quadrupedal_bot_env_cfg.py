@@ -81,3 +81,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_dof_pos_limits: float = 0.0    # 관절 soft limit 초과 패널티 (legged_gym: _reward_dof_pos_limits)
     rew_scale_contact_forces: float = 0.0    # 발 착지 충격력 초과 패널티 (legged_gym: _reward_feet_contact_forces)
     max_foot_contact_force: float = 50.0     # N, 충격력 패널티 기준값 (정적 3.68N × ~13배 마진)
+
+    # --- Command-Conditioned Policy ---
+    # rel_standing_envs 동등: 리셋 시 이 비율만큼 cmd=(0,0,0) 강제 → 제자리 서기 학습 보장
+    zero_command_prob: float = 0.0

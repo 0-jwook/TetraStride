@@ -36,7 +36,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티
     rew_scale_joint_default: float = -0.5      # 어깨 0.2 rad 초과 이탈 시 패널티
     rew_scale_upright: float = 2.0            # 직립 유지 강화
-    rew_scale_foot_spread: float = -2.0       # 발 안쪽 모임 방지 (sliding survival 차단)
+    rew_scale_foot_spread: float = -8.0       # -2→-8: 왼쪽 앞다리 중앙 모임 강하게 차단
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티 활성화
     rew_scale_stand_still: float = -0.3      # 재활성화: kp=20에서 Gaussian 보상 부호+와 균형 가능
     freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거

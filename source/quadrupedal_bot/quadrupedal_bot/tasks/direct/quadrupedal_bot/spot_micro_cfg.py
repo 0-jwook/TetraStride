@@ -14,8 +14,7 @@ from isaaclab.assets.articulation import ArticulationCfg
 #
 # Standing pose (body z ≈ 0.19~0.20 m, bent knee like real robot):
 #   leg = 0.83 rad (47°), foot = -0.83 rad — real robot measurement Q2=-0.83, Q3=1.66
-#   kp=100, effort_limit=50, action_scale=0.05: gravity_sag=0.010 rad (완벽 유지)
-#   max_action_torque = 100×0.05 = 5 N·m — 폭발 없이 강한 위치제어
+#   kp=20, effort_limit=10: gravity_sag=0.052 rad, ep_len=999 달성 확인된 안정 설정
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -52,27 +51,27 @@ SPOT_MICRO_CFG = ArticulationCfg(
     actuators={
         "shoulder_joints": DCMotorCfg(
             joint_names_expr=[".*_shoulder"],
-            effort_limit=50.0,
-            saturation_effort=50.0,
-            velocity_limit=10.0,
-            stiffness=100.0,  # gravity_sag≈0, 힘 제약 제거
-            damping=4.0,
+            effort_limit=2.0,
+            saturation_effort=2.0,
+            velocity_limit=6.0,
+            stiffness=15.0,
+            damping=0.5,
         ),
         "leg_joints": DCMotorCfg(
             joint_names_expr=[".*_leg"],
-            effort_limit=50.0,
-            saturation_effort=50.0,
-            velocity_limit=10.0,
-            stiffness=100.0,  # gravity_sag=1.03/100=0.010 rad (사실상 완벽 유지)
-            damping=4.0,
+            effort_limit=10.0,
+            saturation_effort=10.0,
+            velocity_limit=6.0,
+            stiffness=20.0,
+            damping=0.6,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
-            effort_limit=50.0,
-            saturation_effort=50.0,
-            velocity_limit=10.0,
-            stiffness=100.0,
-            damping=4.0,
+            effort_limit=10.0,
+            saturation_effort=10.0,
+            velocity_limit=6.0,
+            stiffness=20.0,
+            damping=0.5,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

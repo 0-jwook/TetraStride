@@ -8,13 +8,13 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     """Stage 2 (트롯) PPO 설정 — 5000 iteration으로 접촉 스케줄 + 약한 전진 학습."""
 
     num_steps_per_env = 24
-    max_iterations = 6000
+    max_iterations = 8000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_17-24-40"   # Stage2 (gait 3.0 → 6.0, movement 재활성화)
-    load_checkpoint = "model_5800.pt"
+    load_run = "2026-05-07_17-40-29"   # Stage2b: gait 2.5, movement 5.0, lin_vel 8.0 (전진 유도)
+    load_checkpoint = "model_6800.pt"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지

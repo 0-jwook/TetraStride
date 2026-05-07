@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-06_07-02-56"   # shoulder 수정 + foot_spread=-8 stance 최종
+    load_run = "PLACEHOLDER"   # Stage1 완료 후 업데이트 필요
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

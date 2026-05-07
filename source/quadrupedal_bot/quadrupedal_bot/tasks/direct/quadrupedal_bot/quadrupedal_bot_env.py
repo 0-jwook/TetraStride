@@ -94,6 +94,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         obs = torch.cat(
             [
+                self.robot.data.root_lin_vel_b,                      # [N, 3] 속도 피드백 추가
                 self.robot.data.root_ang_vel_b,                      # [N, 3]
                 self.robot.data.projected_gravity_b,                 # [N, 3]
                 self._commands,                                      # [N, 3]
@@ -159,10 +160,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
         ], dim=1)  # [N, 4]
         foot_net_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
         actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()  # [N, 4]
-        # reward correct contacts, penalize wrong contacts (standing → net 0, trot → net 4×scale)
-        contact_match = (expected_contact * actual_contact).sum(dim=1)
-        contact_wrong = ((1.0 - expected_contact) * actual_contact).sum(dim=1)
-        rew_gait = (contact_match - contact_wrong) * self.cfg.rew_scale_gait  # [N]
+        # 4발 모두 올바른 상태(접촉/공중) 일치 점수 — 틀린 발 수만큼 차감
+        # bound(앞/뒷다리 동시): max 2점, trot(대각선 교차): max 4점 → trot 선호
+        contact_error = torch.abs(expected_contact - actual_contact).sum(dim=1)  # [N] 0~4
+        rew_gait = (4.0 - contact_error) * self.cfg.rew_scale_gait  # [N]
 
         # Body height reward: Gaussian centered at target — closer = more reward
         # sigma=0.05: at 5cm error → exp(-1.0)=0.37, at 10cm → exp(-2.0)=0.14
@@ -176,11 +177,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
         non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
 
-        # 어깨 관절 dead zone 패널티: 0.3 rad 이내 이탈은 허용 (균형 조정 자유도), 초과분만 패널티
+        # 어깨 관절 패널티: dead zone 0.05 rad으로 좁혀 도마뱀 자세 방지
         shoulder_dev = torch.abs(
             self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
         )
-        shoulder_excess = (shoulder_dev - 0.2).clamp(min=0.0)
+        shoulder_excess = (shoulder_dev - 0.05).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
 
         # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
@@ -188,12 +189,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
         rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
 
-        # Foot spread penalty (Y-axis only, 15차 방식 유지)
+        # Foot spread penalty: 양방향 — 너무 모이거나 너무 벌어지는 것 모두 패널티
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
         foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
         foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
-        span_violation = (self.cfg.target_foot_span - foot_span).clamp(min=0.0)
-        rew_foot_spread = span_violation * self.cfg.rew_scale_foot_spread  # [N]
+        span_error = torch.abs(foot_span - self.cfg.target_foot_span)  # 목표 간격에서 벗어난 정도
+        rew_foot_spread = span_error * self.cfg.rew_scale_foot_spread  # [N]
 
         # Foot slip penalty: contact foot moving laterally = sliding (Margolis 2022)
         foot_lin_vel_w = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]

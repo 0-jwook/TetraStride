@@ -15,10 +15,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     episode_length_s: float = 10.0
 
     # --- spaces ---
-    # obs: ang_vel(3) + proj_gravity(3) + commands(3)
-    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 47
+    # obs: lin_vel_b(3) + ang_vel(3) + proj_gravity(3) + commands(3)
+    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 50
     action_space: int = 12
-    observation_space: int = 47
+    observation_space: int = 50
     state_space: int = 0
 
     # --- simulation ---
@@ -39,7 +39,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=2.0, replicate_physics=True)
 
     # --- action ---
-    action_scale: float = 0.25
+    action_scale: float = 0.35
     action_smoothing: float = 0.8
     init_noise_scale: float = 0.03   # 초기화 관절 노이즈 (0.1→0.03: 0.7N·m로 복원 가능한 범위)
 
@@ -51,7 +51,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- termination ---
     termination_height: float = 0.15
     target_body_height: float = 0.18   # 목표 서기 높이 (패널티 기준)
-    target_foot_span: float = 0.18     # 발 좌우 간격 최소 기준 (미달 시 패널티)
+    target_foot_span: float = 0.12     # 0.18→0.12: 넓은 도마뱀 자세 방지
 
     # --- reward scales (legged_gym 기반) ---
     rew_scale_alive: float = 0.2       # Stage3: 살아있기 보상

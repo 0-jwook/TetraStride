@@ -130,6 +130,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.cfg.rew_scale_termination,
             self.cfg.rew_scale_air_time,
             self.cfg.rew_scale_movement,
+            self.cfg.air_time_threshold,
             self._commands,
             self.robot.data.root_lin_vel_b,
             self.robot.data.root_ang_vel_b,
@@ -143,27 +144,17 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
-        # clamp 밖에서 적용해야 실제로 작동하는 패널티들
+        # spinning 억제 (yaw angular velocity penalty)
         rew_ang_vel_z = torch.square(self.robot.data.root_ang_vel_b[:, 2]) * self.cfg.rew_scale_ang_vel_z
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
-        # trot gait contact schedule reward: each foot rewarded for matching expected stance/swing
-        # foot_ids ordered: FL=0, FR=1, RL=2, RR=3 (alphabetical, same as contact sensor)
-        # swing_A active (sin > 0): FL+RR should be in air; FR+RL should be on ground
-        swing_A = (torch.sin(self._gait_phase) > 0.0)  # [N]
-        # expected_contact: 1 = foot should be touching ground, 0 = foot should be in air
-        expected_contact = torch.stack([
-            (~swing_A).float(),   # FL: on ground when swing_A inactive
-            swing_A.float(),      # FR: on ground when swing_A active
-            swing_A.float(),      # RL: on ground when swing_A active
-            (~swing_A).float(),   # RR: on ground when swing_A inactive
-        ], dim=1)  # [N, 4]
-        foot_net_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, :]
-        actual_contact = (torch.norm(foot_net_forces, dim=-1) > 1.0).float()  # [N, 4]
-        # 4발 모두 올바른 상태(접촉/공중) 일치 점수 — 틀린 발 수만큼 차감
-        # bound(앞/뒷다리 동시): max 2점, trot(대각선 교차): max 4점 → trot 선호
-        contact_error = torch.abs(expected_contact - actual_contact).sum(dim=1)  # [N] 0~4
-        rew_gait = (4.0 - contact_error) * self.cfg.rew_scale_gait  # [N]
+        # gait clock reward 제거 (Rudin 2022 방식: air_time만으로 trot 자연 발생)
+        # gait_phase는 observation hint로만 유지, reward 강제는 비대칭 정책 유발
+        rew_gait = torch.zeros(self.num_envs, device=self.device) * self.cfg.rew_scale_gait
+
+        # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
+        air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
+        rew_air_time_var = -air_time_var * self.cfg.rew_scale_air_time_var
 
         # Body height reward: Gaussian centered at target — closer = more reward
         # sigma=0.05: at 5cm error → exp(-1.0)=0.37, at 10cm → exp(-2.0)=0.14
@@ -232,9 +223,20 @@ class QuadrupedalBotEnv(DirectRLEnv):
             rew_alive_log = self.cfg.rew_scale_alive * (1.0 - self.reset_terminated.float())
             rew_gravity_log = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1) * self.cfg.rew_scale_gravity
             rew_termination_log = self.reset_terminated.float() * self.cfg.rew_scale_termination
+            # lin_vel / ang_vel rewards (for logging)
+            _lin_vel_err = torch.sum(torch.square(self._commands[:, :2] - self.robot.data.root_lin_vel_b[:, :2]), dim=1)
+            rew_lin_vel_log = torch.exp(-_lin_vel_err / 0.25) * self.cfg.rew_scale_lin_vel
+            _ang_vel_err = torch.square(self._commands[:, 2] - self.robot.data.root_ang_vel_b[:, 2])
+            rew_ang_vel_log = torch.exp(-_ang_vel_err / 0.25) * self.cfg.rew_scale_ang_vel
+            # air_time reward (for logging)
+            _cmd_has_vel = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+            _air_time_log = torch.sum(
+                (last_air_time - self.cfg.air_time_threshold).clamp(min=0.0) * first_contact.float(), dim=1
+            ) * self.cfg.rew_scale_air_time * _cmd_has_vel
             per_step_net = (rew_alive_log + rew_upright + rew_gravity_log + rew_foot_slip
                             + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
-                            + rew_dof_pos_limits + rew_contact_forces)
+                            + rew_dof_pos_limits + rew_contact_forces
+                            + rew_lin_vel_log + rew_ang_vel_log + _air_time_log)
             # torque saturation: fraction of joints outputting ≥ 95% of effort_limit
             effort_limit = 10.0  # N·m, leg/foot effort_limit
             torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
@@ -243,6 +245,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
             body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > 0.0).float()
             self.extras["log"] = {
                 "rew/alive": rew_alive_log.mean().item(),
+                "rew/lin_vel": rew_lin_vel_log.mean().item(),
+                "rew/ang_vel": rew_ang_vel_log.mean().item(),
+                "rew/air_time": _air_time_log.mean().item(),
+                "rew/air_time_var": rew_air_time_var.mean().item(),
                 "rew/upright": rew_upright.mean().item(),
                 "rew/gravity": rew_gravity_log.mean().item(),
                 "rew/foot_slip": rew_foot_slip.mean().item(),
@@ -253,6 +259,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/dof_pos_limits": rew_dof_pos_limits.mean().item(),
                 "rew/contact_forces": rew_contact_forces.mean().item(),
                 "rew/body_height": rew_body_height.mean().item(),
+                "rew/ang_vel_z": rew_ang_vel_z.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
                 "diag/body_height_min": self.robot.data.root_pos_w[:, 2].min().item(),
                 "diag/torque_sat_ratio": torque_sat_ratio.item(),
@@ -261,11 +268,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/termination": rew_termination_log.mean().item(),
                 "diag/per_step_net": per_step_net.mean().item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
+                "diag/foot_span_mean": foot_span.mean().item(),
+                "diag/actual_lin_vel_x": self.robot.data.root_lin_vel_b[:, 0].mean().item(),
+                "diag/actual_ang_vel_z": self.robot.data.root_ang_vel_b[:, 2].mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
                 + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
-                + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces)
+                + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
+                + rew_air_time_var)
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -345,6 +356,7 @@ def compute_rewards(
     rew_scale_termination: float,
     rew_scale_air_time: float,
     rew_scale_movement: float,
+    air_time_threshold: float,
     commands: torch.Tensor,
     root_lin_vel_b: torch.Tensor,
     root_ang_vel_b: torch.Tensor,
@@ -381,7 +393,7 @@ def compute_rewards(
 
     cmd_has_vel = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
     rew_air_time = torch.sum(
-        (last_air_time - 0.1).clamp(min=0.0) * first_contact.float(), dim=1
+        (last_air_time - air_time_threshold).clamp(min=0.0) * first_contact.float(), dim=1
     ) * rew_scale_air_time * cmd_has_vel
 
     living = (

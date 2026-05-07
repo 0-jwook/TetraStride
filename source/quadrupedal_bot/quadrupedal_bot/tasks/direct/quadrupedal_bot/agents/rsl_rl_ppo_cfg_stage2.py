@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "PLACEHOLDER"   # Stage1 완료 후 업데이트 필요
+    load_run = "2026-05-07_11-01-19"   # obs=50, lin_vel_b 포함 Stage1
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

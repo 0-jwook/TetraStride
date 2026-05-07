@@ -5,19 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 (트롯) PPO 설정 — 5000 iteration으로 접촉 스케줄 + 약한 전진 학습."""
+    """Stage 2 — Rudin 2022 방식 처음부터 학습 (standing 편향 없이 velocity로 locomotion 자연 발생)."""
 
     num_steps_per_env = 24
     max_iterations = 8000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
-    resume = True
-    load_run = "2026-05-07_18-12-41"   # Stage2c: lin_vel_penalty -6.0 추가 + 작은 cmd 범위
-    load_checkpoint = "model_7200.pt"
+    resume = False  # 처음부터 학습: standing 편향 파괴
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지
+        init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화
         actor_obs_normalization=True,
         critic_obs_normalization=True,
         actor_hidden_dims=[512, 256, 128],
@@ -29,7 +27,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.002,
+        entropy_coef=0.01,  # 0.002→0.01: 탐색 강화
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

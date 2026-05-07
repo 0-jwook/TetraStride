@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_11-01-19"   # obs=50, lin_vel_b 포함 Stage1
-    load_checkpoint = "model_4999.pt"
+    load_run = "2026-05-07_17-01-06"   # Stage2 학습 중 (yaw 패널티 수정 버전)
+    load_checkpoint = "model_5200.pt"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지

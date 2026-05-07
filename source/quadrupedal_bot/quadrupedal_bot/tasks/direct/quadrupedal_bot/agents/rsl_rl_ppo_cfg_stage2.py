@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_17-13-23"   # Stage2 (gait clock + yaw fix 버전)
-    load_checkpoint = "model_5200.pt"
+    load_run = "2026-05-07_17-24-40"   # Stage2 (gait 3.0 → 6.0, movement 재활성화)
+    load_checkpoint = "model_5800.pt"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.6,   # 1.0→0.6: 초기 action 카오스 방지

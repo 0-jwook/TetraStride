@@ -22,7 +22,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 5.0         # exp(-||cmd-vel||²/0.25) — 주요 추진력
     rew_scale_ang_vel: float = 0.5         # 0.05→0.5: yaw 명령 추적 강화
-    rew_scale_ang_vel_z: float = -2.0      # -0.1→-2.0: spinning 강력 억제
+    rew_scale_ang_vel_z: float = -2.0      # cmd와의 yaw 오차 패널티 (절대값 억제→추적오차 억제로 변경)
     rew_scale_movement: float = 0.0        # 제거: lin_vel tracking과 중복, spinning 유발
 
     # --- Gait 자연 발생 보상 (gait clock reward 없음) ---

@@ -144,8 +144,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
-        # spinning 억제 (yaw angular velocity penalty)
-        rew_ang_vel_z = torch.square(self.robot.data.root_ang_vel_b[:, 2]) * self.cfg.rew_scale_ang_vel_z
+        # yaw 추적 오차 패널티: 명령 yaw와 실제 yaw 차이만 패널티 (명령대로 도는 건 허용)
+        yaw_error = torch.square(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
+        rew_ang_vel_z = yaw_error * self.cfg.rew_scale_ang_vel_z
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
         # gait clock reward 제거 (Rudin 2022 방식: air_time만으로 trot 자연 발생)
@@ -259,7 +260,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/dof_pos_limits": rew_dof_pos_limits.mean().item(),
                 "rew/contact_forces": rew_contact_forces.mean().item(),
                 "rew/body_height": rew_body_height.mean().item(),
-                "rew/ang_vel_z": rew_ang_vel_z.mean().item(),
+                "rew/yaw_error": rew_ang_vel_z.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
                 "diag/body_height_min": self.robot.data.root_pos_w[:, 2].min().item(),
                 "diag/torque_sat_ratio": torque_sat_ratio.item(),

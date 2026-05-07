@@ -25,11 +25,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_movement: float = 0.0         # off: lin_vel으로 충분
     rew_scale_lin_vel_penalty: float = 0.0  # off: 처음부터는 패널티 없이 탐색
 
-    # --- Gait 유도: air_time 중심 (gait clock 보조) ---
-    rew_scale_gait: float = 0.0             # 처음부터: gait clock 없이 emergent
-    rew_scale_air_time: float = 2.0         # 발 들기 보상 (Rudin 2022 수준)
-    air_time_threshold: float = 0.1         # 0.1s = 5 steps
-    rew_scale_air_time_var: float = 0.0     # off (초기 학습 간섭 방지)
+    # --- Gait 유도: air_time 강화 + gait clock 재도입 (보행 시작 후 gait 개선) ---
+    rew_scale_gait: float = 2.5             # 가벼운 gait clock: 보행 중 trot pattern 유도
+    rew_scale_air_time: float = 5.0         # 2.0→5.0: 발 들기 강화 (foot lifting 개선)
+    air_time_threshold: float = 0.05        # 0.1→0.05s: 더 짧은 들기도 보상
+    rew_scale_air_time_var: float = 1.0     # 약한 비대칭 차단
 
     # --- 자세 안정 (legged_gym 표준) ---
     rew_scale_body_height: float = 0.0      # off: height target은 termination으로만

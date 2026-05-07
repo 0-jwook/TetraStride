@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_17-01-06"   # Stage2 학습 중 (yaw 패널티 수정 버전)
+    load_run = "2026-05-07_17-13-23"   # Stage2 (gait clock + yaw fix 버전)
     load_checkpoint = "model_5200.pt"
 
     policy = RslRlPpoActorCriticCfg(

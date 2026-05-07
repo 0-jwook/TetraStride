@@ -25,9 +25,9 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_ang_vel_z: float = -2.0      # cmd와의 yaw 오차 패널티 (절대값 억제→추적오차 억제로 변경)
     rew_scale_movement: float = 0.0        # 제거: lin_vel tracking과 중복, spinning 유발
 
-    # --- Gait 자연 발생 보상 (gait clock reward 없음) ---
-    rew_scale_gait: float = 0.0            # 비활성 — gait clock reward 제거 (Rudin 방식)
-    rew_scale_air_time: float = 5.0        # 강화: 발 들기 적극 유도 (threshold=0.3s)
+    # --- Gait 유도 ---
+    rew_scale_gait: float = 1.5            # trot 보행 bootstrap (contact schedule 매칭, cmd≠0에만 활성)
+    rew_scale_air_time: float = 5.0        # 발 들기 보상 (threshold=0.1s)
     rew_scale_air_time_var: float = 2.0    # 비대칭 정책 차단 (한 다리만 움직임 패널티)
 
     # --- 자세 안정 ---

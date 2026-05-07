@@ -149,9 +149,23 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_ang_vel_z = yaw_error * self.cfg.rew_scale_ang_vel_z
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
-        # gait clock reward 제거 (Rudin 2022 방식: air_time만으로 trot 자연 발생)
-        # gait_phase는 observation hint로만 유지, reward 강제는 비대칭 정책 유발
-        rew_gait = torch.zeros(self.num_envs, device=self.device) * self.cfg.rew_scale_gait
+        # gait clock reward: 속도 명령이 있을 때만 활성화 (cmd=0이면 서기 자세 유지)
+        # 발 순서: FL=0, FR=1, RL=2, RR=3 (find_bodies 알파벳순)
+        # 대각선 쌍 A(FL+RR), B(FR+RL): trot는 A↔B 교대
+        if self.cfg.rew_scale_gait != 0.0:
+            cos_phase = torch.cos(self._gait_phase)  # [N]
+            pair_a = torch.tensor([1.0, 0.0, 0.0, 1.0], device=self.device)  # FL, RR
+            pair_b = torch.tensor([0.0, 1.0, 1.0, 0.0], device=self.device)  # FR, RL
+            target_a = (cos_phase < 0).float().unsqueeze(1) * pair_a.unsqueeze(0)
+            target_b = (cos_phase >= 0).float().unsqueeze(1) * pair_b.unsqueeze(0)
+            contact_target = target_a + target_b  # [N, 4], 1=should be on ground
+            foot_forces_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
+            contact_actual = (foot_forces_z.abs() > 1.0).float()  # [N, 4]
+            contact_error = torch.abs(contact_actual - contact_target).sum(dim=1)  # [N], 0..4
+            cmd_has_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+            rew_gait = (4.0 - contact_error) * self.cfg.rew_scale_gait * cmd_has_vel_gate
+        else:
+            rew_gait = torch.zeros(self.num_envs, device=self.device)
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
@@ -270,6 +284,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/per_step_net": per_step_net.mean().item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
                 "diag/foot_span_mean": foot_span.mean().item(),
+                "rew/gait": rew_gait.mean().item(),
                 "diag/actual_lin_vel_x": self.robot.data.root_lin_vel_b[:, 0].mean().item(),
                 "diag/actual_ang_vel_z": self.robot.data.root_ang_vel_b[:, 2].mean().item(),
             }

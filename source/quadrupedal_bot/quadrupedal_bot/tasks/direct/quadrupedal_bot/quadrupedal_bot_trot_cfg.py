@@ -12,22 +12,23 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # Stage1과 동일한 action_scale 유지 (0.35→0.25): 체크포인트 전이 안정성
     action_scale: float = 0.25
 
-    # CCP velocity commands: 전진 중심 (서기 최적점 제거)
-    cmd_lin_vel_x_range: tuple = (0.2, 1.0)  # 항상 양방향 전진 요구 → 서기 로컬옵티멈 차단
-    cmd_lin_vel_y_range: tuple = (-0.3, 0.3)
-    cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
-    zero_command_prob: float = 0.0           # 서기 명령 완전 제거
+    # CCP velocity commands: 달성 가능한 작은 범위 (학습 안정화)
+    cmd_lin_vel_x_range: tuple = (0.1, 0.5)  # 작은 목표속도: 초기에 달성 가능한 범위
+    cmd_lin_vel_y_range: tuple = (-0.2, 0.2)
+    cmd_ang_vel_z_range: tuple = (-0.3, 0.3)
+    zero_command_prob: float = 0.0           # 서기 명령 제거 유지
 
-    # --- 핵심 속도 추적 (단계2: 제자리 trot 획득 후 전진 유도) ---
+    # --- 핵심 속도 추적 (패널티 추가: 서기 탈출 강제) ---
     rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 8.0         # 5→8: 속도 추적 강화 (trot-in-place 탈출)
+    rew_scale_lin_vel: float = 8.0         # 속도 추적 보상
     rew_scale_ang_vel: float = 0.5         # yaw 명령 추적
     rew_scale_ang_vel_z: float = -2.0      # cmd와의 yaw 오차 패널티
-    rew_scale_movement: float = 5.0        # 1.5→5.0: 실제 전진에 강한 선형 보상 (gait와 비슷한 스케일)
+    rew_scale_movement: float = 4.0        # 실제 전진 선형 보상
+    rew_scale_lin_vel_penalty: float = -6.0  # 속도 미달 직접 패널티: -6×||cmd-vel||²
 
-    # --- Gait 유도 (축소: 전진보상이 더 중요해야 함) ---
-    rew_scale_gait: float = 2.5            # 6.0→2.5: gait 지속 유지하되 전진 억제 없도록 축소
-    rew_scale_air_time: float = 8.0        # 발 들기 보상 유지
+    # --- Gait 유도 ---
+    rew_scale_gait: float = 2.5            # 가이드 유지 (지배 않도록 축소)
+    rew_scale_air_time: float = 6.0        # 발 들기 보상
     air_time_threshold: float = 0.05       # 낮은 threshold
     rew_scale_air_time_var: float = 2.0    # 비대칭 정책 차단
 

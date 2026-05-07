@@ -149,6 +149,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_ang_vel_z = yaw_error * self.cfg.rew_scale_ang_vel_z
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
+        # 선형속도 추적 오차 패널티: cmd 대비 부족한 속도를 직접 패널티 (서기 로컬옵티멈 탈출)
+        lin_vel_error_sq = torch.sum(
+            torch.square(self._commands[:, :2] - self.robot.data.root_lin_vel_b[:, :2]), dim=1
+        )
+        rew_lin_vel_penalty = lin_vel_error_sq * self.cfg.rew_scale_lin_vel_penalty
+
         # gait clock reward: 속도 명령이 있을 때만 활성화 (cmd=0이면 서기 자세 유지)
         # 발 순서: FL=0, FR=1, RL=2, RR=3 (find_bodies 알파벳순)
         # 대각선 쌍 A(FL+RR), B(FR+RL): trot는 A↔B 교대
@@ -285,6 +291,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
                 "diag/foot_span_mean": foot_span.mean().item(),
                 "rew/gait": rew_gait.mean().item(),
+                "rew/lin_vel_penalty": rew_lin_vel_penalty.mean().item(),
                 "diag/actual_lin_vel_x": self.robot.data.root_lin_vel_b[:, 0].mean().item(),
                 "diag/actual_ang_vel_z": self.robot.data.root_ang_vel_b[:, 2].mean().item(),
             }
@@ -292,7 +299,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
                 + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
-                + rew_air_time_var)
+                + rew_air_time_var + rew_lin_vel_penalty)
 
     # ------------------------------------------------------------------
     # Done / Termination

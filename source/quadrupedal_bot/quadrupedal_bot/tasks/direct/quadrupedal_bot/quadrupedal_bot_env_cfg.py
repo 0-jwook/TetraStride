@@ -16,9 +16,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
 
     # --- spaces ---
     # obs: lin_vel_b(3) + ang_vel(3) + proj_gravity(3) + commands(3)
-    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2) = 50
+    #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2)
+    #      + heading_err_sin(1) + heading_err_cos(1) = 52
     action_space: int = 12
-    observation_space: int = 50
+    observation_space: int = 52
     state_space: int = 0
 
     # --- simulation ---
@@ -69,6 +70,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_gait: float = 5.0         # trot gait reference: reward foot clearance during swing phase
     rew_scale_body_height: float = -8.0   # 몸통 낮으면 페널티 (플랭크 방지)
     rew_scale_non_foot_contact: float = -1.0  # 발 외 부위(무릎/배) 지면 접촉 페널티
+    non_foot_contact_threshold: float = 20.0  # N, 무릎 접촉 감지 임계값 (2.5kg 로봇: 정적 하중 ~6N)
     rew_scale_lin_vel_xy: float = 0.0        # 수평 이동 패널티 (Stance에서만 활성화)
     rew_scale_ang_vel_z: float = 0.0         # yaw 회전 패널티 (Stance에서만 활성화)
     rew_scale_joint_default: float = 0.0     # 어깨 관절 dead zone 패널티
@@ -84,6 +86,22 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_air_time_var: float = 0.0      # 4발 air_time 분산 패널티 — 비대칭 정책 차단
     air_time_threshold: float = 0.1         # 발 들기 최소 시간(s): 0.1s=5steps 이상 들어야 보상
     rew_scale_lin_vel_penalty: float = 0.0  # 선형속도 추적 오차 패널티 (-||cmd-vel||² × scale)
+    rew_scale_swing_contact: float = 0.0   # swing 중 발 접촉 페널티 (양방향 gait 강제)
+    rew_scale_foot_height: float = 0.0     # swing 단계 발 높이 직접 보상 (air_time 간접 측정 보완)
+    rew_scale_stumble: float = 0.0         # legged_gym: 무릎 긁힘 감지 (||F_xy|| > 5×|F_z| on non-foot)
+    rew_scale_foot_stance: float = 0.0     # walk-these-ways: stance 중 발 하중 보상 (발끝 착지 유도)
+    rew_scale_knee_angle: float = 0.0      # knee too-straight penalty (>-0.3 rad → shin walking)
+    rew_scale_knee_height_stance: float = 0.0  # knee too-low during contact penalty (shin walking detection)
+    rew_scale_heading: float = 0.0         # heading tracking reward (angle-based, legged_gym 방식)
+    heading_sigma: float = 0.25           # heading reward kernel sigma (작을수록 타이트한 직선 요구)
+    gait_freq_hz: float = 1.5            # trot gait clock 주파수 (Hz)
+    rew_scale_action_jerk: float = 0.0   # action 2차 미분 패널티 (jerk, Walk These Ways 방식)
+    rew_scale_diagonal_symmetry: float = 0.0  # trot diagonal pair (FL-RR, FR-RL) 대칭 패널티
+    rew_scale_energy: float = 0.0        # |τ|×|q̇| 에너지 패널티 (자연스러운 유연한 움직임)
+
+    # --- Domain randomization (push perturbation) ---
+    push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)
+    max_push_vel: float = 0.5              # m/s 최대 푸시 속도
 
     # --- Command-Conditioned Policy ---
     # rel_standing_envs 동등: 리셋 시 이 비율만큼 cmd=(0,0,0) 강제 → 제자리 서기 학습 보장

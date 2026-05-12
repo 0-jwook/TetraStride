@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_19-05-49"   # 처음부터 학습: step1200에서 vel=0.44, air_time 개선 시작
-    load_checkpoint = "model_1200.pt"
+    load_run = "2026-05-12_23-37-12"   # gait quality tuned: heading_err=3.3°, ang_vel_z=0.004
+    load_checkpoint = "model_7999.pt"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

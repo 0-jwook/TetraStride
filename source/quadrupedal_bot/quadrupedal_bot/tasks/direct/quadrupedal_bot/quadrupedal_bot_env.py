@@ -11,6 +11,7 @@ from isaaclab.envs import DirectRLEnv
 from isaaclab.sensors import ContactSensor
 from isaaclab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from isaaclab.sim.spawners.materials import RigidBodyMaterialCfg
+from isaaclab.utils.math import quat_apply
 
 from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
@@ -24,6 +25,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
         self._foot_body_ids_robot, _ = self.robot.find_bodies(".*foot_link")
         self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
+        self._knee_ids, _ = self.robot.find_joints(".*_foot")   # URDF "foot" joint = knee joint
         # All non-foot body IDs for knee/belly contact penalty
         all_body_ids, _ = self.contact_sensor.find_bodies(".*")
         foot_id_set = set(int(i) for i in self._foot_ids)
@@ -34,10 +36,16 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
         self._last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
+        self._last_last_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         self._processed_actions = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         self._last_joint_vel = torch.zeros(self.num_envs, self.cfg.action_space, device=self.device)
         # trot gait phase: each env has its own phase, randomized at reset
         self._gait_phase = torch.zeros(self.num_envs, device=self.device)
+        self._push_step = 0
+        # target heading: 에피소드 시작 시 heading 저장 후 yaw 명령 누적 (올바른 heading 추적)
+        self._target_heading = torch.zeros(self.num_envs, device=self.device)
+        # heading error cache: computed in _get_observations, used in _get_rewards
+        self._heading_err = torch.zeros(self.num_envs, device=self.device)
 
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
@@ -78,7 +86,17 @@ class QuadrupedalBotEnv(DirectRLEnv):
             + (1.0 - self.cfg.action_smoothing) * self._processed_actions
         )
         if not self.cfg.freeze_gait_phase:
-            self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * 1.5) % (2.0 * math.pi)
+            self._gait_phase = (self._gait_phase + self.step_dt * 2.0 * math.pi * self.cfg.gait_freq_hz) % (2.0 * math.pi)
+
+        # Random push perturbation for domain randomization
+        if self.cfg.push_interval_s > 0.0:
+            self._push_step += 1
+            push_interval = max(1, int(self.cfg.push_interval_s / self.step_dt))
+            if self._push_step % push_interval == 0:
+                push = torch.zeros(self.num_envs, 6, device=self.device)
+                push[:, :2] = (torch.rand(self.num_envs, 2, device=self.device) * 2.0 - 1.0) * self.cfg.max_push_vel
+                cur_vel = torch.cat([self.robot.data.root_lin_vel_b, self.robot.data.root_ang_vel_b], dim=1)
+                self.robot.write_root_velocity_to_sim(cur_vel + push, self.robot._ALL_INDICES)
 
     def _apply_action(self) -> None:
         target = self.robot.data.default_joint_pos + self._processed_actions * self.cfg.action_scale
@@ -92,9 +110,22 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
 
+        # Update target heading with yaw command accumulation (step dt integration)
+        self._target_heading = self._target_heading + self._commands[:, 2] * self.step_dt
+        # Compute current heading from quaternion
+        _fwd_local = torch.zeros(self.num_envs, 3, device=self.device)
+        _fwd_local[:, 0] = 1.0
+        _fwd_world = quat_apply(self.robot.data.root_quat_w, _fwd_local)
+        _heading = torch.atan2(_fwd_world[:, 1], _fwd_world[:, 0])
+        # Angular difference wrapped to [-π, π]
+        self._heading_err = torch.atan2(
+            torch.sin(_heading - self._target_heading),
+            torch.cos(_heading - self._target_heading),
+        )
+
         obs = torch.cat(
             [
-                self.robot.data.root_lin_vel_b,                      # [N, 3] 속도 피드백 추가
+                self.robot.data.root_lin_vel_b,                      # [N, 3]
                 self.robot.data.root_ang_vel_b,                      # [N, 3]
                 self.robot.data.projected_gravity_b,                 # [N, 3]
                 self._commands,                                      # [N, 3]
@@ -103,9 +134,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 self._last_actions,                                  # [N, 12]
                 torch.sin(self._gait_phase).unsqueeze(1),            # [N, 1]
                 torch.cos(self._gait_phase).unsqueeze(1),            # [N, 1]
+                torch.sin(self._heading_err).unsqueeze(1),           # [N, 1] heading error sin
+                torch.cos(self._heading_err).unsqueeze(1),           # [N, 1] heading error cos
             ],
             dim=-1,
-        )
+        )  # total: 3+3+3+3+12+12+12+1+1+1+1 = 52
+        self._last_last_actions = self._last_actions.clone()
         self._last_actions = self.actions.clone()
         return {"policy": obs}
 
@@ -144,9 +178,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
-        # yaw 추적 오차 패널티: 명령 yaw와 실제 yaw 차이만 패널티 (명령대로 도는 건 허용)
+        # yaw 추적 오차 패널티 (각속도 기반)
         yaw_error = torch.square(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
         rew_ang_vel_z = yaw_error * self.cfg.rew_scale_ang_vel_z
+
+        # Heading tracking reward: _heading_err already computed in _get_observations()
+        # target_heading also already updated there — do NOT update again here
+        _cmd_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+        rew_heading = torch.exp(-torch.square(self._heading_err) / self.cfg.heading_sigma) * self.cfg.rew_scale_heading * _cmd_vel_gate
         rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
 
         # 선형속도 추적 오차 패널티: cmd 대비 부족한 속도를 직접 패널티 (서기 로컬옵티멈 탈출)
@@ -155,39 +194,87 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
         rew_lin_vel_penalty = lin_vel_error_sq * self.cfg.rew_scale_lin_vel_penalty
 
-        # gait clock reward: 속도 명령이 있을 때만 활성화 (cmd=0이면 서기 자세 유지)
+        # ── Gait phase: stance/swing 마스크 (gait/swing_contact/foot_height 공통 사용) ──
         # 발 순서: FL=0, FR=1, RL=2, RR=3 (find_bodies 알파벳순)
-        # 대각선 쌍 A(FL+RR), B(FR+RL): trot는 A↔B 교대
+        cos_phase = torch.cos(self._gait_phase)
+        pair_a = torch.tensor([1.0, 0.0, 0.0, 1.0], device=self.device)  # FL, RR stance
+        pair_b = torch.tensor([0.0, 1.0, 1.0, 0.0], device=self.device)  # FR, RL stance
+        target_a = (cos_phase < 0).float().unsqueeze(1) * pair_a.unsqueeze(0)
+        target_b = (cos_phase >= 0).float().unsqueeze(1) * pair_b.unsqueeze(0)
+        contact_target = target_a + target_b          # [N, 4], 1=should be on ground (stance)
+        swing_mask = 1.0 - contact_target             # [N, 4], 1=should be in air (swing)
+        foot_forces_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
+        contact_actual = (foot_forces_z.abs() > 1.0).float()
+        cmd_has_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+
+        # Gait clock reward
         if self.cfg.rew_scale_gait != 0.0:
-            cos_phase = torch.cos(self._gait_phase)  # [N]
-            pair_a = torch.tensor([1.0, 0.0, 0.0, 1.0], device=self.device)  # FL, RR
-            pair_b = torch.tensor([0.0, 1.0, 1.0, 0.0], device=self.device)  # FR, RL
-            target_a = (cos_phase < 0).float().unsqueeze(1) * pair_a.unsqueeze(0)
-            target_b = (cos_phase >= 0).float().unsqueeze(1) * pair_b.unsqueeze(0)
-            contact_target = target_a + target_b  # [N, 4], 1=should be on ground
-            foot_forces_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
-            contact_actual = (foot_forces_z.abs() > 1.0).float()  # [N, 4]
-            contact_error = torch.abs(contact_actual - contact_target).sum(dim=1)  # [N], 0..4
-            cmd_has_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+            contact_error = torch.abs(contact_actual - contact_target).sum(dim=1)
             rew_gait = (4.0 - contact_error) * self.cfg.rew_scale_gait * cmd_has_vel_gate
         else:
             rew_gait = torch.zeros(self.num_envs, device=self.device)
+
+        # Swing contact penalty (walk-these-ways 방식): swing 중 발이 닿으면 페널티
+        # — 진동으로 air_time 채우는 reward hacking 직접 차단
+        swing_contact_err = (contact_actual * swing_mask).sum(dim=1)
+        rew_swing_contact = swing_contact_err * self.cfg.rew_scale_swing_contact * cmd_has_vel_gate
+
+        # Foot height reward: toe tip clearance during swing (Solo12: 6cm target)
+        # toe tip = knee_pos + R_calf @ [0, 0, -0.130] (calf local z → world)
+        _calf_quat = self.robot.data.body_quat_w[:, self._foot_body_ids_robot, :]  # [N,4,4]
+        _N, _nf = self.num_envs, 4
+        _calf_z_local = torch.zeros(_N * _nf, 3, device=self.device)
+        _calf_z_local[:, 2] = 1.0
+        _calf_z_world = quat_apply(_calf_quat.reshape(_N * _nf, 4), _calf_z_local).reshape(_N, _nf, 3)
+        foot_tip_z = (self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]
+                      + _calf_z_world[:, :, 2] * (-0.130))
+        foot_clearance = foot_tip_z.clamp(min=0.0, max=0.06)  # Solo12 기준 6cm cap
+        rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
+
+        # Knee angle penalty: knee too-straight → shin/knee walking root cause
+        # URDF "foot" joint = knee. Default -0.83 rad. Penalize if > -0.3 rad (too extended)
+        knee_angle = self.joint_pos[:, self._knee_ids]  # [N, 4]
+        knee_overshoot = (knee_angle - (-0.3)).clamp(min=0.0)
+        rew_knee_angle = torch.sum(torch.square(knee_overshoot), dim=1) * self.cfg.rew_scale_knee_angle
+
+        # Stance knee height penalty: if knee joint (foot_link origin) is near ground during contact
+        # Normal stance: knee_z ≈ 0.06m. Shin walking: knee_z ≈ 0.01m → penalize
+        knee_z = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]  # [N, 4]
+        knee_low_in_stance = (0.04 - knee_z).clamp(min=0.0) * contact_actual
+        rew_knee_height_stance = knee_low_in_stance.sum(dim=1) * self.cfg.rew_scale_knee_height_stance
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
         rew_air_time_var = -air_time_var * self.cfg.rew_scale_air_time_var
 
-        # Body height reward: Gaussian centered at target — closer = more reward
-        # sigma=0.05: at 5cm error → exp(-1.0)=0.37, at 10cm → exp(-2.0)=0.14
+        # Body height reward:
+        #   scale > 0: Gaussian reward centered at target (특정 높이 강제 — 비대칭 자세 유발 위험)
+        #   scale < 0: 단방향 페널티 — target 이하일 때만 선형 패널티 (자연 높이 허용)
         body_height = self.robot.data.root_pos_w[:, 2]
-        height_error = (body_height - self.cfg.target_body_height).abs()
-        rew_body_height = torch.exp(-height_error / 0.05) * self.cfg.rew_scale_body_height
+        if self.cfg.rew_scale_body_height >= 0:
+            height_error = (body_height - self.cfg.target_body_height).abs()
+            rew_body_height = torch.exp(-height_error / 0.05) * self.cfg.rew_scale_body_height
+        else:
+            height_deficit = (self.cfg.target_body_height - body_height).clamp(min=0)
+            rew_body_height = height_deficit * self.cfg.rew_scale_body_height
 
-        # Non-foot contact penalty: penalize knee/belly touching ground
-        # threshold=20N: 정상 서기 시 정강이 스침(~1-5N)은 무시, 실제 무게를 싣는 무릎보행(>20N)만 감지
+        # Non-foot contact penalty + stumble (legged_gym) + foot stance force (walk-these-ways)
         non_foot_forces = self.contact_sensor.data.net_forces_w_history[:, 0, self._non_foot_contact_ids, :]
-        non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > 20.0).float()
+        non_foot_contact = (torch.norm(non_foot_forces, dim=-1) > self.cfg.non_foot_contact_threshold).float()
         rew_non_foot_contact = non_foot_contact.sum(dim=1) * self.cfg.rew_scale_non_foot_contact
+
+        # Stumble penalty (legged_gym): 무릎 긁힘 = 수평력 >> 수직력
+        # ||F_xy|| > 5×|F_z| → 무릎이 지면을 긁거나 세게 박히는 신호
+        non_foot_horiz = torch.norm(non_foot_forces[:, :, :2], dim=-1)
+        non_foot_vert = non_foot_forces[:, :, 2].abs()
+        stumble_mask = (non_foot_horiz > 5.0 * non_foot_vert + 1e-3).float()
+        rew_stumble = stumble_mask.sum(dim=1) * self.cfg.rew_scale_stumble
+
+        # Foot stance force reward (walk-these-ways): stance 단계에서 발에 하중이 실릴수록 보상
+        # — 발 대신 무릎에 체중 싣는 knee-walking 직접 억제
+        foot_forces_z_abs = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2].abs()
+        stance_load = (foot_forces_z_abs * contact_target).sum(dim=1)  # [N]
+        rew_foot_stance = stance_load.clamp(max=15.0) / 15.0 * self.cfg.rew_scale_foot_stance * cmd_has_vel_gate
 
         # 어깨 관절 패널티: dead zone 0.05 rad으로 좁혀 도마뱀 자세 방지
         shoulder_dev = torch.abs(
@@ -214,6 +301,28 @@ class QuadrupedalBotEnv(DirectRLEnv):
         foot_in_contact = (torch.abs(foot_force_z) > 1.0).float()
         foot_slip_speed = torch.norm(foot_lin_vel_w, dim=-1) * foot_in_contact
         rew_foot_slip = torch.sum(torch.square(foot_slip_speed), dim=1) * self.cfg.rew_scale_foot_slip
+
+        # Action jerk penalty (2차 미분, Walk These Ways 방식): 급격한 변화 차단
+        action_jerk = torch.sum(
+            torch.square(self.actions - 2.0 * self._last_actions + self._last_last_actions), dim=1
+        )
+        rew_action_jerk = action_jerk * self.cfg.rew_scale_action_jerk
+
+        # Diagonal symmetry reward (trot): FL-RR, FR-RL 대각선 pair가 같은 thigh+calf 각도를 가져야 함
+        # Joint index: FL(0,4,8), FR(1,5,9), RL(2,6,10), RR(3,7,11)
+        fl_tc = self.joint_pos[:, [4, 8]]   # FL thigh+calf
+        rr_tc = self.joint_pos[:, [7, 11]]  # RR thigh+calf
+        fr_tc = self.joint_pos[:, [5, 9]]   # FR thigh+calf
+        rl_tc = self.joint_pos[:, [6, 10]]  # RL thigh+calf
+        rew_diagonal_symmetry = (
+            torch.sum(torch.square(fl_tc - rr_tc), dim=1)
+            + torch.sum(torch.square(fr_tc - rl_tc), dim=1)
+        ) * self.cfg.rew_scale_diagonal_symmetry * cmd_has_vel_gate
+
+        # Energy penalty: |τ_i| × |q̇_i| (metabolic cost 모사 — 부드럽고 효율적인 움직임 유도)
+        rew_energy = torch.sum(
+            torch.abs(self.robot.data.applied_torque) * torch.abs(self.joint_vel), dim=1
+        ) * self.cfg.rew_scale_energy
 
         # DOF acceleration penalty: penalize motor vibration (Rudin 2021)
         dof_acc = (self.joint_vel - self._last_joint_vel) / self.step_dt
@@ -291,15 +400,29 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
                 "diag/foot_span_mean": foot_span.mean().item(),
                 "rew/gait": rew_gait.mean().item(),
+                "rew/non_foot_contact": rew_non_foot_contact.mean().item(),
+                "rew/stumble": rew_stumble.mean().item(),
+                "rew/foot_stance": rew_foot_stance.mean().item(),
+                "rew/swing_contact": rew_swing_contact.mean().item(),
+                "rew/foot_height": rew_foot_height.mean().item(),
+                "rew/knee_angle": rew_knee_angle.mean().item(),
+                "rew/knee_height_stance": rew_knee_height_stance.mean().item(),
+                "rew/heading": rew_heading.mean().item(),
+                "diag/heading_err_deg": (self._heading_err.abs() * 57.3).mean().item(),
                 "rew/lin_vel_penalty": rew_lin_vel_penalty.mean().item(),
                 "diag/actual_lin_vel_x": self.robot.data.root_lin_vel_b[:, 0].mean().item(),
                 "diag/actual_ang_vel_z": self.robot.data.root_ang_vel_b[:, 2].mean().item(),
+                "rew/action_jerk": rew_action_jerk.mean().item(),
+                "rew/diagonal_symmetry": rew_diagonal_symmetry.mean().item(),
+                "rew/energy": rew_energy.mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
                 + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
-                + rew_air_time_var + rew_lin_vel_penalty)
+                + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height
+                + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance
+                + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy)
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -354,10 +477,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self.joint_pos[env_ids] = joint_pos
         self.joint_vel[env_ids] = joint_vel
         self._last_actions[env_ids] = 0.0
+        self._last_last_actions[env_ids] = 0.0
         self._processed_actions[env_ids] = 0.0
         self._last_joint_vel[env_ids] = 0.0
         # randomize gait phase at reset to break synchronization
         self._gait_phase[env_ids] = torch.zeros(n, device=self.device).uniform_(0.0, 2.0 * math.pi)
+        # target heading: 리셋 시 현재 heading으로 초기화 (누적 yaw 명령의 기준점)
+        _fwd = quat_apply(self.robot.data.root_quat_w[env_ids],
+                          torch.tensor([[1.0, 0.0, 0.0]], device=self.device).expand(n, -1))
+        self._target_heading[env_ids] = torch.atan2(_fwd[:, 1], _fwd[:, 0])
 
 
 # ------------------------------------------------------------------

@@ -32,10 +32,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- Gait 유도 ---
     rew_scale_gait: float = 1.5             # 2.5→1.5: gait 21pt→12pt, 제자리 최적해 가치 붕괴
-    rew_scale_air_time: float = 2.5         # 5.0→2.5: 큰 스윙 억제
-    air_time_threshold: float = 0.04
+    rew_scale_air_time: float = 5.0         # 2.5→5.0: 실질적 에어타임 보상 강화
+    air_time_threshold: float = 0.10        # 0.04→0.10: 최소 100ms 이상 들어야 보상
     rew_scale_swing_contact: float = -1.5
-    rew_scale_foot_height: float = 5.0
+    rew_scale_foot_height: float = 12.0     # 5.0→12.0: 발 높이 올릴수록 보상 강화
 
     # --- 자세 안정 ---
     rew_scale_body_height: float = -8.0
@@ -54,7 +54,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 자세 유지 ---
     rew_scale_joint_default: float = -3.0
     rew_scale_foot_spread: float = -6.0
-    rew_scale_foot_slip: float = -0.05
+    rew_scale_foot_slip: float = -0.5       # -0.05→-0.5: 바닥 끌기(셔플링) 강하게 억제
     rew_scale_air_time_var: float = 3.0
 
     # --- 무릎 보행 방지 ---

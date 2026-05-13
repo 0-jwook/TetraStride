@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-12_09-28-38"   # v13: 셔플링 이전, 실제 보폭 있는 보행 정책에서 전이
-    load_checkpoint = "model_7999.pt"
+    load_run = "2026-05-13_20-16-00"   # v13: foot_height/air_time 강화 — vel=0.43m/s, foot_h=0.91
+    load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

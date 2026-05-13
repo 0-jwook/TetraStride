@@ -5,16 +5,16 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — Rudin 2022 방식 처음부터 학습 (standing 편향 없이 velocity로 locomotion 자연 발생)."""
+    """Stage 2 — Stage 1 (standing) → Trot 전이학습 (v8 파라미터 처음부터 적용)."""
 
     num_steps_per_env = 24
-    max_iterations = 8000
+    max_iterations = 5000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-12_23-37-12"   # gait quality tuned: heading_err=3.3°, ang_vel_z=0.004
-    load_checkpoint = "model_7999.pt"
+    load_run = "2026-05-07_11-01-19"   # Stage 1 최신 standing policy (5000 iter)
+    load_checkpoint = "model_4999.pt"  # v11: URDF 물리 기반 — 셔플링/heading 수정
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

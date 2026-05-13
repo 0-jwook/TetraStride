@@ -228,7 +228,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _calf_z_world = quat_apply(_calf_quat.reshape(_N * _nf, 4), _calf_z_local).reshape(_N, _nf, 3)
         foot_tip_z = (self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]
                       + _calf_z_world[:, :, 2] * (-0.130))
-        foot_clearance = foot_tip_z.clamp(min=0.0, max=0.06)  # Solo12 기준 6cm cap
+        foot_clearance = foot_tip_z.clamp(min=0.0, max=0.04)  # Spot Micro 기준 4cm cap (0.17m × 24%)
         rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
 
         # Knee angle penalty: knee too-straight → shin/knee walking root cause

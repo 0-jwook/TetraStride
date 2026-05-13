@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-07_11-01-19"   # Stage 1 최신 standing policy (5000 iter)
-    load_checkpoint = "model_4999.pt"  # 09-28-38 run 파라미터 복원 — 사용자 확인 최적 보행
+    load_run = "2026-05-12_09-28-38"   # 사용자 확인 최적 보행 run
+    load_checkpoint = "model_7999.pt"  # 직선 보행 fix: ang_vel_z -4.0, heading 5.0, air_time 2.5
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

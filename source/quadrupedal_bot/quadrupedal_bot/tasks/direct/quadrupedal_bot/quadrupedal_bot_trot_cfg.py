@@ -23,15 +23,16 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 3.0
     rew_scale_ang_vel: float = 1.0
-    rew_scale_ang_vel_z: float = -1.0
-    rew_scale_heading: float = 3.0
+    rew_scale_ang_vel_z: float = -4.0       # -1.0→-4.0: yaw 억제 강화 (직선 보행 핵심)
+    rew_scale_heading: float = 5.0          # 3.0→5.0: 명시적 직진 유도
     heading_sigma: float = 0.25
     rew_scale_movement: float = 0.0
     rew_scale_lin_vel_penalty: float = 0.0
+    rew_scale_lin_vel_xy: float = -0.3      # lateral drift 약하게 억제 (x 포함이라 소규모만)
 
     # --- Gait 유도 ---
     rew_scale_gait: float = 2.5
-    rew_scale_air_time: float = 5.0
+    rew_scale_air_time: float = 2.5         # 5.0→2.5: 큰 다리 스윙 억제 → 측면 모멘텀 감소
     air_time_threshold: float = 0.04
     rew_scale_swing_contact: float = -1.5
     rew_scale_foot_height: float = 5.0

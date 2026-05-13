@@ -21,7 +21,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 속도 추적 ---
     rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 8.0          # 3.0→8.0: gait(21pt) 압도 탈출, 전진이 압도적으로 유리하게
+    rew_scale_lin_vel: float = 6.0          # 8.0→6.0: slide-forward exploit 억제 (슬라이딩도 보상되는 문제)
     rew_scale_ang_vel: float = 1.0
     rew_scale_ang_vel_z: float = -3.0       # -4.0→-3.0: 소폭 완화 (heading과 동시 강화 금지)
     rew_scale_heading: float = 5.0          # 직진 유도 유지
@@ -32,10 +32,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- Gait 유도 ---
     rew_scale_gait: float = 1.5             # 2.5→1.5: gait 21pt→12pt, 제자리 최적해 가치 붕괴
-    rew_scale_air_time: float = 5.0         # 2.5→5.0: 실질적 에어타임 보상 강화
-    air_time_threshold: float = 0.10        # 0.04→0.10: 최소 100ms 이상 들어야 보상
+    rew_scale_air_time: float = 8.0         # 5.0→8.0: threshold 달성 시 보상 대폭 강화
+    air_time_threshold: float = 0.12        # 0.10→0.12: 1.5Hz 스윙의 36% 이상 요구
     rew_scale_swing_contact: float = -1.5
-    rew_scale_foot_height: float = 12.0     # 5.0→12.0: 발 높이 올릴수록 보상 강화
+    rew_scale_foot_height: float = 6.0      # 12.0→6.0: instantaneous 보상 약화, air_time으로 gradient 유도
 
     # --- 자세 안정 ---
     rew_scale_body_height: float = -8.0
@@ -47,14 +47,14 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 관절/토크 제약 ---
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.05
+    rew_scale_action_rate: float = -0.15    # -0.05→-0.15: 고주파 oscillation 억제, 서보 수명 보호
     rew_scale_dof_acc: float = -1e-6
     rew_scale_termination: float = -5.0
 
     # --- 자세 유지 ---
     rew_scale_joint_default: float = -3.0
     rew_scale_foot_spread: float = -6.0
-    rew_scale_foot_slip: float = -0.5       # -0.05→-0.5: 바닥 끌기(셔플링) 강하게 억제
+    rew_scale_foot_slip: float = -1.5       # -0.5→-1.5: 느린 슬라이딩도 강하게 억제 (slip²이라 scale 필요)
     rew_scale_air_time_var: float = 3.0
 
     # --- 무릎 보행 방지 ---

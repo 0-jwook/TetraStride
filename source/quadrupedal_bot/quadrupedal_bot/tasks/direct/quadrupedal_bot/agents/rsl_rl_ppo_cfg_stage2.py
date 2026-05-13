@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-13_20-16-00"   # v13: foot_height/air_time 강화 — vel=0.43m/s, foot_h=0.91
+    load_run = "2026-05-13_20-16-00"   # v14: slip 강화, air_time 구조 개선, action_rate 강화
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(
@@ -29,7 +29,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.01,  # 0.002→0.01: 탐색 강화
+        entropy_coef=0.015,  # 0.01→0.015: late training 탐색 소량 복원 (shuffling local minima 탈출)
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

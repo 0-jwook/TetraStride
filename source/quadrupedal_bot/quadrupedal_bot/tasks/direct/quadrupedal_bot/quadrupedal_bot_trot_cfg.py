@@ -31,7 +31,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_lin_vel_xy: float = -0.3      # lateral drift 약하게 억제
 
     # --- Gait 유도 ---
-    rew_scale_gait: float = 1.5             # 2.5→1.5: gait 21pt→12pt, 제자리 최적해 가치 붕괴
+    rew_scale_gait: float = 2.0             # 1.5→2.0: 대각선 접촉 패턴 강제력 강화
     rew_scale_air_time: float = 8.0         # 5.0→8.0: threshold 달성 시 보상 대폭 강화
     air_time_threshold: float = 0.12        # 0.10→0.12: 1.5Hz 스윙의 36% 이상 요구
     rew_scale_swing_contact: float = -1.5
@@ -55,7 +55,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_default: float = -3.0
     rew_scale_foot_spread: float = -6.0
     rew_scale_foot_slip: float = -1.5       # -0.5→-1.5: 느린 슬라이딩도 강하게 억제 (slip²이라 scale 필요)
-    rew_scale_air_time_var: float = 3.0
+    rew_scale_air_time_var: float = 5.0     # 3.0→5.0: 4발 air_time 불균형 억제 강화
 
     # --- 무릎 보행 방지 ---
     non_foot_contact_threshold: float = 4.0
@@ -67,7 +67,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 보행 품질 ---
     rew_scale_action_jerk: float = 0.0
-    rew_scale_diagonal_symmetry: float = 0.0
+    rew_scale_diagonal_symmetry: float = -0.05  # 0→-0.05: FL-RR, FR-RL 관절 궤적 동기화 강제
     rew_scale_energy: float = 0.0
 
     # --- 도메인 랜덤화 ---

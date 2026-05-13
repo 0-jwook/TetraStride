@@ -14,7 +14,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
 
     resume = True
     load_run = "2026-05-07_11-01-19"   # Stage 1 최신 standing policy (5000 iter)
-    load_checkpoint = "model_4999.pt"  # v11: URDF 물리 기반 — 셔플링/heading 수정
+    load_checkpoint = "model_4999.pt"  # 09-28-38 run 파라미터 복원 — 사용자 확인 최적 보행
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

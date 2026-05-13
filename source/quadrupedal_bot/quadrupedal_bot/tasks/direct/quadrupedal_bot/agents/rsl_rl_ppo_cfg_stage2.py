@@ -14,7 +14,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
 
     resume = True
     load_run = "2026-05-12_09-28-38"   # 사용자 확인 최적 보행 run
-    load_checkpoint = "model_7999.pt"  # 직선 보행 fix: ang_vel_z -4.0, heading 5.0, air_time 2.5
+    load_checkpoint = "model_7999.pt"  # 제자리 optimum 탈출: lin_vel 8.0, gait 1.5, movement 2.0
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화

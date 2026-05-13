@@ -21,18 +21,18 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 속도 추적 ---
     rew_scale_alive: float = 0.5
-    rew_scale_lin_vel: float = 3.0
+    rew_scale_lin_vel: float = 8.0          # 3.0→8.0: gait(21pt) 압도 탈출, 전진이 압도적으로 유리하게
     rew_scale_ang_vel: float = 1.0
-    rew_scale_ang_vel_z: float = -4.0       # -1.0→-4.0: yaw 억제 강화 (직선 보행 핵심)
-    rew_scale_heading: float = 5.0          # 3.0→5.0: 명시적 직진 유도
+    rew_scale_ang_vel_z: float = -3.0       # -4.0→-3.0: 소폭 완화 (heading과 동시 강화 금지)
+    rew_scale_heading: float = 5.0          # 직진 유도 유지
     heading_sigma: float = 0.25
-    rew_scale_movement: float = 0.0
+    rew_scale_movement: float = 2.0         # 0.0→2.0: 실제 이동 직접 보상, gradient 탈출 보조
     rew_scale_lin_vel_penalty: float = 0.0
-    rew_scale_lin_vel_xy: float = -0.3      # lateral drift 약하게 억제 (x 포함이라 소규모만)
+    rew_scale_lin_vel_xy: float = -0.3      # lateral drift 약하게 억제
 
     # --- Gait 유도 ---
-    rew_scale_gait: float = 2.5
-    rew_scale_air_time: float = 2.5         # 5.0→2.5: 큰 다리 스윙 억제 → 측면 모멘텀 감소
+    rew_scale_gait: float = 1.5             # 2.5→1.5: gait 21pt→12pt, 제자리 최적해 가치 붕괴
+    rew_scale_air_time: float = 2.5         # 5.0→2.5: 큰 스윙 억제
     air_time_threshold: float = 0.04
     rew_scale_swing_contact: float = -1.5
     rew_scale_foot_height: float = 5.0

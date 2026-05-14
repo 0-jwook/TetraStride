@@ -59,16 +59,24 @@ pip install -e source/quadrupedal_bot
 
 ## 학습 실행
 
+모든 명령어는 `/home/wodnr/quadrupedal_bot/quadrupedal_bot/` 디렉토리에서 실행.
+
 ```bash
-# Stage 2 Trot 학습
-conda run -n env_isaaclab python scripts/rsl_rl/train.py \
+# Stage 2 Trot 학습 (headless GPU)
+DISPLAY=:1 conda run -n env_isaaclab python scripts/rsl_rl/train.py \
   --task Template-Quadrupedal-Bot-Trot-v0 \
   --num_envs 4096 --headless
 
-# 시각화
-conda run -n env_isaaclab python scripts/rsl_rl/play.py \
+# 시각화 (run 이름 지정)
+DISPLAY=:1 conda run -n env_isaaclab python scripts/rsl_rl/play.py \
   --task Template-Quadrupedal-Bot-Trot-v0 \
-  --num_envs 4 --load_run <run_name>
+  --num_envs 4 --load_run 2026-05-14_13-39-47
+
+# 체크포인트 직접 지정 시 (절대 경로 필요)
+DISPLAY=:1 conda run -n env_isaaclab python scripts/rsl_rl/play.py \
+  --task Template-Quadrupedal-Bot-Trot-v0 \
+  --num_envs 4 \
+  --checkpoint /home/wodnr/quadrupedal_bot/quadrupedal_bot/logs/rsl_rl/spot_micro_trot/<run_name>/model_4999.pt
 ```
 
 ---

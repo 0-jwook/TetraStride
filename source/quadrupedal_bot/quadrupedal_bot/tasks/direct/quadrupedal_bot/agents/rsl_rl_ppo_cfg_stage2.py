@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v17: 주춤거림/어깨 벌어짐/heading drift 3종 동시 수정 (v16→v17 전이학습)."""
+    """Stage 2 — v18: 뚝뚝 끊김/직선 보행 수정 (gait 압력↓ + vy-only 패널티 + action_scale↓)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-14_13-39-47"   # v16: heading 1.70°, vel 0.43m/s, gait 7.29
+    load_run = "2026-05-14_15-43-27"   # v18 base: v17 최종 (heading 1.25°, foot_span 0.269m)
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

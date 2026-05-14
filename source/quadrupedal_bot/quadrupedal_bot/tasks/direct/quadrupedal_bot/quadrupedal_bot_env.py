@@ -186,7 +186,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         # target_heading also already updated there — do NOT update again here
         _cmd_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
         rew_heading = torch.exp(-torch.square(self._heading_err) / self.cfg.heading_sigma) * self.cfg.rew_scale_heading * _cmd_vel_gate
-        rew_lin_vel_xy = torch.sum(torch.square(self.robot.data.root_lin_vel_b[:, :2]), dim=1) * self.cfg.rew_scale_lin_vel_xy
+        rew_lin_vel_xy = torch.square(self.robot.data.root_lin_vel_b[:, 1]) * self.cfg.rew_scale_lin_vel_xy
 
         # 선형속도 추적 오차 패널티: cmd 대비 부족한 속도를 직접 패널티 (서기 로컬옵티멈 탈출)
         lin_vel_error_sq = torch.sum(

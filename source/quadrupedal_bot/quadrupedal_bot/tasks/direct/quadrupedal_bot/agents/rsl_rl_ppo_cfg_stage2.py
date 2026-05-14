@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v18: 뚝뚝 끊김/직선 보행 수정 (gait 압력↓ + vy-only 패널티 + action_scale↓)."""
+    """Stage 2 — v18b: action_scale 복원 후 재시작 (gait압력↓ + vy-only 패널티 + smoothing↓)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

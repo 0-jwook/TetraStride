@@ -10,8 +10,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
 
-    action_scale: float = 0.25          # 0.35→0.25: 관절 이동량 감소 → 자연스럽고 부드러운 동작
-    action_smoothing: float = 0.6       # 0.8→0.6: 래그 감소 → 정책 의도와 실제 동작 간격 줄임
+    action_scale: float = 0.35          # v17 그대로 유지 (전이학습 호환성)
+    action_smoothing: float = 0.6       # 0.8→0.6: 래그 감소 → 뚝뚝 끊김 완화
 
     cmd_lin_vel_x_range: tuple = (0.3, 0.7)
     cmd_lin_vel_y_range: tuple = (-0.2, 0.2)

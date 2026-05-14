@@ -23,9 +23,9 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 6.0          # 8.0→6.0: slide-forward exploit 억제 (슬라이딩도 보상되는 문제)
     rew_scale_ang_vel: float = 1.0
-    rew_scale_ang_vel_z: float = -3.0       # -4.0→-3.0: 소폭 완화 (heading과 동시 강화 금지)
-    rew_scale_heading: float = 5.0          # 직진 유도 유지
-    heading_sigma: float = 0.25
+    rew_scale_ang_vel_z: float = -5.0       # -3.0→-5.0: yaw rate 추적 오차 억제 강화
+    rew_scale_heading: float = 8.0          # 5.0→8.0: heading 보상 증폭
+    heading_sigma: float = 0.05             # 0.25→0.05: 3° 오차에서 gradient 7배 강화
     rew_scale_movement: float = 2.0         # 0.0→2.0: 실제 이동 직접 보상, gradient 탈출 보조
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_lin_vel_xy: float = -0.3      # lateral drift 약하게 억제
@@ -67,7 +67,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 보행 품질 ---
     rew_scale_action_jerk: float = 0.0
-    rew_scale_diagonal_symmetry: float = -0.05  # 0→-0.05: FL-RR, FR-RL 관절 궤적 동기화 강제
+    rew_scale_diagonal_symmetry: float = -0.10  # -0.05→-0.10: 좌우 비대칭이 drift 원인 → 억제 강화
     rew_scale_energy: float = 0.0
 
     # --- 도메인 랜덤화 ---

@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-14_11-37-35"   # v15: diagonal sym -0.046, gait 6.90, reward 19382 (역대 최고)
+    load_run = "2026-05-14_11-37-35"   # v16: heading_sigma 0.25→0.05, heading 8.0, ang_vel_z -5.0
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

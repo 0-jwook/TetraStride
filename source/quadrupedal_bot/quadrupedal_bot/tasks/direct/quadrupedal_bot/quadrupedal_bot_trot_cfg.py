@@ -14,8 +14,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # action_smoothing = 0.8 (전이학습 중 변경 금지)
 
     cmd_lin_vel_x_range: tuple = (0.3, 0.7)
-    cmd_lin_vel_y_range: tuple = (-0.2, 0.2)
-    cmd_ang_vel_z_range: tuple = (-0.3, 0.3)
+    cmd_lin_vel_y_range: tuple = (0.0, 0.0)   # v22: 직진 전용 커리큘럼 (lateral 명령 제거)
+    cmd_ang_vel_z_range: tuple = (-0.1, 0.1)  # v22: 회전 최소화
     zero_command_prob: float = 0.1
 
     gait_freq_hz: float = 1.5
@@ -33,7 +33,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_lin_vel_xy: float = -2.0      # vy² 측면 속도 패널티 유지
 
     # --- 직선 보행 직접 수정 ---
-    rew_scale_pos_drift: float = -3.0       # 세계 Y축 누적 drift 패널티 (직진 명령 env) — 지표 게이밍 차단
+    rew_scale_pos_drift: float = -6.0       # -3.0→-6.0: cmd_y=0 고정으로 100% env 적용, 패널티 2배
 
     # --- Gait 유도 (v20 균형점 유지) ---
     rew_scale_gait: float = 1.5

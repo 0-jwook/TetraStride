@@ -46,6 +46,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self._target_heading = torch.zeros(self.num_envs, device=self.device)
         # heading error cache: computed in _get_observations, used in _get_rewards
         self._heading_err = torch.zeros(self.num_envs, device=self.device)
+        # world-frame Y position at episode start (lateral drift tracking)
+        self._start_pos_y = torch.zeros(self.num_envs, device=self.device)
 
         self.joint_pos = self.robot.data.joint_pos
         self.joint_vel = self.robot.data.joint_vel
@@ -178,15 +180,21 @@ class QuadrupedalBotEnv(DirectRLEnv):
             first_contact,
         )
 
-        # yaw 추적 오차 패널티 (각속도 기반)
-        yaw_error = torch.square(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
-        rew_ang_vel_z = yaw_error * self.cfg.rew_scale_ang_vel_z
+        # yaw 추적: legged_gym 방식 exp 보상 (패널티 단독 → 보상+패널티 병행)
+        yaw_error_sq = torch.square(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
+        rew_ang_vel_z = yaw_error_sq * self.cfg.rew_scale_ang_vel_z  # 패널티 유지
+        rew_yaw_tracking = torch.exp(-yaw_error_sq / 0.25) * self.cfg.rew_scale_yaw_tracking  # exp 보상 추가
 
         # Heading tracking reward: _heading_err already computed in _get_observations()
         # target_heading also already updated there — do NOT update again here
         _cmd_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
         rew_heading = torch.exp(-torch.square(self._heading_err) / self.cfg.heading_sigma) * self.cfg.rew_scale_heading * _cmd_vel_gate
         rew_lin_vel_xy = torch.square(self.robot.data.root_lin_vel_b[:, 1]) * self.cfg.rew_scale_lin_vel_xy
+
+        # 세계 좌표 Y축 누적 drift 패널티 (직진 명령 env에서만 활성, heading_err 게이밍 우회)
+        lateral_drift = (self.robot.data.root_pos_w[:, 1] - self._start_pos_y).abs()
+        straight_gate = (torch.abs(self._commands[:, 1]) < 0.05).float()
+        rew_pos_drift = lateral_drift.clamp(max=2.0) * self.cfg.rew_scale_pos_drift * straight_gate * _cmd_vel_gate
 
         # 선형속도 추적 오차 패널티: cmd 대비 부족한 속도를 직접 패널티 (서기 로컬옵티멈 탈출)
         lin_vel_error_sq = torch.sum(
@@ -415,6 +423,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/action_jerk": rew_action_jerk.mean().item(),
                 "rew/diagonal_symmetry": rew_diagonal_symmetry.mean().item(),
                 "rew/energy": rew_energy.mean().item(),
+                "rew/yaw_tracking": rew_yaw_tracking.mean().item(),
+                "rew/pos_drift": rew_pos_drift.mean().item(),
+                "diag/lateral_drift_m": lateral_drift.mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -422,7 +433,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
                 + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height
                 + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance
-                + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy)
+                + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
+                + rew_yaw_tracking + rew_pos_drift)
 
     # ------------------------------------------------------------------
     # Done / Termination
@@ -486,6 +498,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _fwd = quat_apply(self.robot.data.root_quat_w[env_ids],
                           torch.tensor([[1.0, 0.0, 0.0]], device=self.device).expand(n, -1))
         self._target_heading[env_ids] = torch.atan2(_fwd[:, 1], _fwd[:, 0])
+        # world Y position at reset (lateral drift baseline)
+        self._start_pos_y[env_ids] = self.robot.data.root_pos_w[env_ids, 1]
 
 
 # ------------------------------------------------------------------

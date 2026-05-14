@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v20: 셔플링 재발 수정 + 직선 보행 vy 패널티 강화."""
+    """Stage 2 v21: 직선 보행 근본 해결 — 위치 drift 직접 패널티 + legged_gym yaw tracking."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -24,19 +24,23 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 6.0
     rew_scale_ang_vel: float = 1.0
-    rew_scale_ang_vel_z: float = -2.0
+    rew_scale_ang_vel_z: float = -1.0       # 패널티 완화 (yaw_tracking이 보상으로 추가됨)
+    rew_scale_yaw_tracking: float = 2.0     # legged_gym: exp(-yaw_err²/0.25) × 2.0 — yaw 추적 동기 부여
     rew_scale_heading: float = 10.0
-    heading_sigma: float = 0.05
+    heading_sigma: float = 0.10        # 0.05→0.10: 연구 권장 — 더 넓은 gradient로 안정적 학습
     rew_scale_movement: float = 2.0
     rew_scale_lin_vel_penalty: float = 0.0
-    rew_scale_lin_vel_xy: float = -2.0   # -0.5→-2.0: vy² 측면 이동 직접 억제 (직선 보행 강제)
+    rew_scale_lin_vel_xy: float = -2.0      # vy² 측면 속도 패널티 유지
 
-    # --- Gait 유도 ---
-    rew_scale_gait: float = 1.5          # 1.0→1.5: 셔플링 방지 위해 소폭 복원 (abrupt 없이)
-    rew_scale_air_time: float = 6.0      # 5.0→6.0: 발 들기 인센티브 복원
-    air_time_threshold: float = 0.10     # 0.08→0.10s: 실제 발 들기 요구 (셔플링 방지)
-    rew_scale_swing_contact: float = -0.8   # -0.5→-0.8: swing 중 접촉 패널티 강화 (셔플링 차단)
-    rew_scale_foot_height: float = 4.0   # 2.0→4.0: 발 높이 보상 복원 (들어올리되 힘차지 않게)
+    # --- 직선 보행 직접 수정 ---
+    rew_scale_pos_drift: float = -3.0       # 세계 Y축 누적 drift 패널티 (직진 명령 env) — 지표 게이밍 차단
+
+    # --- Gait 유도 (v20 균형점 유지) ---
+    rew_scale_gait: float = 1.5
+    rew_scale_air_time: float = 6.0
+    air_time_threshold: float = 0.12   # 0.10→0.12s: swing 36%, 셔플링 방지
+    rew_scale_swing_contact: float = -0.8
+    rew_scale_foot_height: float = 4.0
 
     # --- 자세 안정 ---
     rew_scale_body_height: float = -8.0
@@ -69,7 +73,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_knee_height_stance: float = -10.0
 
     # --- 보행 품질 ---
-    rew_scale_diagonal_symmetry: float = -0.15
+    rew_scale_diagonal_symmetry: float = -0.30  # -0.15→-0.30: 연구 권장 -0.5~-1.0, 전이학습 안정성 위해 중간값
     rew_scale_energy: float = 0.0
 
     # --- 도메인 랜덤화 ---

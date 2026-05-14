@@ -10,8 +10,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
 
-    action_scale: float = 0.35          # v17 그대로 유지 (전이학습 호환성)
-    action_smoothing: float = 0.6       # 0.8→0.6: 래그 감소 → 뚝뚝 끊김 완화
+    action_scale: float = 0.35          # v17 동일 (전이학습 호환)
+    # action_smoothing = 0.8 (base 동일, 전이학습 중 변경 금지)
 
     cmd_lin_vel_x_range: tuple = (0.3, 0.7)
     cmd_lin_vel_y_range: tuple = (-0.2, 0.2)
@@ -29,7 +29,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     heading_sigma: float = 0.05
     rew_scale_movement: float = 2.0
     rew_scale_lin_vel_penalty: float = 0.0
-    rew_scale_lin_vel_xy: float = -1.5  # -0.3→-1.5: vy²만 패널티 (env.py 수정으로 vx 제외됨) → 직선 보행 강제
+    rew_scale_lin_vel_xy: float = -0.5  # vy²만 패널티 (env.py 수정으로 vx 제외됨), 보수적 scale
 
     # --- Gait 유도 (압력 완화 — 뚝뚝 끊김 원인 제거) ---
     rew_scale_gait: float = 1.0         # 2.0→1.0: gait clock 강제 완화 (abrupt transition 감소)

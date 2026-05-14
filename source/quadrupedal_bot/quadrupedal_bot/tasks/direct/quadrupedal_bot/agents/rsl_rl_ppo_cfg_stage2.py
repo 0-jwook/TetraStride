@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v18b: action_scale 복원 후 재시작 (gait압력↓ + vy-only 패널티 + smoothing↓)."""
+    """Stage 2 — v19: smoothing/scale 동결, 보상만 조정 (gait↓ + vy-only lateral + action_rate↑)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

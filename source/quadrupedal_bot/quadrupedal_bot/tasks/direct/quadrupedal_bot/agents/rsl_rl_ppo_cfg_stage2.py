@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — Stage 1 (standing) → Trot 전이학습 (v8 파라미터 처음부터 적용)."""
+    """Stage 2 — v17: 주춤거림/어깨 벌어짐/heading drift 3종 동시 수정 (v16→v17 전이학습)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

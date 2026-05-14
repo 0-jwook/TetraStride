@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-13_23-49-08"   # v15: diagonal symmetry 활성화, gait 2.0, air_time_var 5.0
+    load_run = "2026-05-14_11-37-35"   # v15: diagonal sym -0.046, gait 6.90, reward 19382 (역대 최고)
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

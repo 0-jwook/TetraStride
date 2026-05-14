@@ -5,13 +5,13 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v18: 뚝뚝 끊김 제거 + 직선 보행 수정 (gait 압력↓ + lateral-only 패널티 + 동작 부드럽게)."""
+    """Stage 2 v20: 셔플링 재발 수정 + 직선 보행 vy 패널티 강화."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
 
-    action_scale: float = 0.35          # v17 동일 (전이학습 호환)
-    # action_smoothing = 0.8 (base 동일, 전이학습 중 변경 금지)
+    action_scale: float = 0.35
+    # action_smoothing = 0.8 (전이학습 중 변경 금지)
 
     cmd_lin_vel_x_range: tuple = (0.3, 0.7)
     cmd_lin_vel_y_range: tuple = (-0.2, 0.2)
@@ -29,14 +29,14 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     heading_sigma: float = 0.05
     rew_scale_movement: float = 2.0
     rew_scale_lin_vel_penalty: float = 0.0
-    rew_scale_lin_vel_xy: float = -0.5  # vy²만 패널티 (env.py 수정으로 vx 제외됨), 보수적 scale
+    rew_scale_lin_vel_xy: float = -2.0   # -0.5→-2.0: vy² 측면 이동 직접 억제 (직선 보행 강제)
 
-    # --- Gait 유도 (압력 완화 — 뚝뚝 끊김 원인 제거) ---
-    rew_scale_gait: float = 1.0         # 2.0→1.0: gait clock 강제 완화 (abrupt transition 감소)
-    rew_scale_air_time: float = 5.0     # 8.0→5.0: 공중 시간 보상 완화 (힘차게 차는 동작 감소)
-    air_time_threshold: float = 0.08    # 0.12→0.08s: 달성 가능한 threshold (1.5Hz에서 24% swing)
-    rew_scale_swing_contact: float = -0.5  # -1.5→-0.5: swing 중 접촉 패널티 완화 (덜 abrupt)
-    rew_scale_foot_height: float = 2.0  # 6.0→2.0: 발 높이 보상 대폭 감소 (뒷다리 힘차게 차기 억제)
+    # --- Gait 유도 ---
+    rew_scale_gait: float = 1.5          # 1.0→1.5: 셔플링 방지 위해 소폭 복원 (abrupt 없이)
+    rew_scale_air_time: float = 6.0      # 5.0→6.0: 발 들기 인센티브 복원
+    air_time_threshold: float = 0.10     # 0.08→0.10s: 실제 발 들기 요구 (셔플링 방지)
+    rew_scale_swing_contact: float = -0.8   # -0.5→-0.8: swing 중 접촉 패널티 강화 (셔플링 차단)
+    rew_scale_foot_height: float = 4.0   # 2.0→4.0: 발 높이 보상 복원 (들어올리되 힘차지 않게)
 
     # --- 자세 안정 ---
     rew_scale_body_height: float = -8.0
@@ -48,7 +48,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 관절/토크 제약 ---
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.10  # -0.05→-0.10: 동작 부드럽게 (주춤거림 없이 매끄럽게)
+    rew_scale_action_rate: float = -0.10
     rew_scale_action_jerk: float = -0.02
     rew_scale_dof_acc: float = -1e-6
     rew_scale_termination: float = -5.0

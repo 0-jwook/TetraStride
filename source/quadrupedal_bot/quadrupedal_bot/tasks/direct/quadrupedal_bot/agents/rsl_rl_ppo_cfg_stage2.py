@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-14_11-37-35"   # v16: heading_sigma 0.25→0.05, heading 8.0, ang_vel_z -5.0
+    load_run = "2026-05-14_13-39-47"   # v16: heading 1.70°, vel 0.43m/s, gait 7.29
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

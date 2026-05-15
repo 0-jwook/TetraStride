@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v22: 직진 커리큘럼 (cmd_y=0 고정, pos_drift 100% env 적용)."""
+    """Stage 2 — v23: 진동 억제 + 직선 보행 강화 (best model 기반 전이)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-14_22-59-40"   # v22 base: v20 (heading 0.957°, vel 0.42m/s)
+    load_run = "2026-05-14_18-56-54"   # v23 base: best visual model
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

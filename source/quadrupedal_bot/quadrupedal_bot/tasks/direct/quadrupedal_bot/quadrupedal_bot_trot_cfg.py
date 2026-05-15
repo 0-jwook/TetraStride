@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v21: 직선 보행 근본 해결 — 위치 drift 직접 패널티 + legged_gym yaw tracking."""
+    """Stage 2 v23: 진동 억제 + 직선 보행 강화 (dof_acc 25x, ang_vel_xy 5x, heading_sigma 타이트, 선형 패널티 추가)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -15,7 +15,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     cmd_lin_vel_x_range: tuple = (0.3, 0.7)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)   # v22: 직진 전용 커리큘럼 (lateral 명령 제거)
-    cmd_ang_vel_z_range: tuple = (-0.1, 0.1)  # v22: 회전 최소화
+    cmd_ang_vel_z_range: tuple = (0.0, 0.0)   # v23: yaw 명령 완전 제거 → 항상 직진
     zero_command_prob: float = 0.1
 
     gait_freq_hz: float = 1.5
@@ -24,10 +24,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 0.5
     rew_scale_lin_vel: float = 6.0
     rew_scale_ang_vel: float = 1.0
-    rew_scale_ang_vel_z: float = -1.0       # 패널티 완화 (yaw_tracking이 보상으로 추가됨)
+    rew_scale_ang_vel_z: float = -3.0       # v23: 3배 강화 — yaw rate 오차 패널티
     rew_scale_yaw_tracking: float = 2.0     # legged_gym: exp(-yaw_err²/0.25) × 2.0 — yaw 추적 동기 부여
     rew_scale_heading: float = 10.0
-    heading_sigma: float = 0.10        # 0.05→0.10: 연구 권장 — 더 넓은 gradient로 안정적 학습
+    heading_sigma: float = 0.025       # v23: 4배 타이트 — 5° 오차에서 11.5% 보상 감소 (gradient 복원)
     rew_scale_movement: float = 2.0
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_lin_vel_xy: float = -2.0      # vy² 측면 속도 패널티 유지
@@ -46,15 +46,17 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_body_height: float = -8.0
     rew_scale_upright: float = 2.0
     rew_scale_gravity: float = -5.0
-    rew_scale_ang_vel_xy: float = -0.3
-    rew_scale_lin_vel_z: float = -2.0
+    rew_scale_ang_vel_xy: float = -1.5      # v23: 5배 — 몸통 롤/피치 진동 직접 억제
+    rew_scale_lin_vel_z: float = -4.0       # v23: 2배 — 수직 바운스 억제
 
     # --- 관절/토크 제약 ---
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.10
-    rew_scale_action_jerk: float = -0.02
-    rew_scale_dof_acc: float = -1e-6
+    rew_scale_action_rate: float = -0.5     # v23: 5배 — 빠른 관절 출력 비용 상승
+    rew_scale_action_jerk: float = -0.10    # v23: 5배 — 고주파 진동 2차 미분 억제
+    rew_scale_dof_acc: float = -2.5e-5      # v23: 25배 — 진동 비용 ~3.4/step (속도보상 6.0 대비 억제력 확보)
+    rew_scale_contact_forces: float = -0.05 # v23: 발 착지 충격 패널티 활성화
+    max_foot_contact_force: float = 30.0    # v23: 2.5kg 로봇 기준 임계값 (50→30N)
     rew_scale_termination: float = -5.0
 
     # --- 자세 유지 ---
@@ -73,8 +75,12 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_knee_height_stance: float = -10.0
 
     # --- 보행 품질 ---
-    rew_scale_diagonal_symmetry: float = -0.30  # -0.15→-0.30: 연구 권장 -0.5~-1.0, 전이학습 안정성 위해 중간값
+    rew_scale_diagonal_symmetry: float = -0.30
     rew_scale_energy: float = 0.0
+
+    # --- v23: 직선 보행 선형 패널티 ---
+    rew_scale_heading_linear: float = -3.0   # 선형 heading 오차 패널티 (exp 포화 1~5° 구간 보완)
+    rew_scale_yaw_rate_error: float = -2.0   # 선형 yaw rate 오차 패널티
 
     # --- 도메인 랜덤화 ---
     push_interval_s: float = 8.0

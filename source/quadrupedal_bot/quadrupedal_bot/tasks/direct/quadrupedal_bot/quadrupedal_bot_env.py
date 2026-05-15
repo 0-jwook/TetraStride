@@ -202,6 +202,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
         rew_lin_vel_penalty = lin_vel_error_sq * self.cfg.rew_scale_lin_vel_penalty
 
+        # 선형 heading 오차 패널티 (exp 포화 구간 보완: 1~5° 소오차에서 gradient 확보)
+        rew_heading_linear = torch.abs(self._heading_err) * self.cfg.rew_scale_heading_linear * _cmd_vel_gate
+        # 선형 yaw rate 오차 패널티
+        rew_yaw_rate_error = torch.abs(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2]) * self.cfg.rew_scale_yaw_rate_error
+
         # ── Gait phase: stance/swing 마스크 (gait/swing_contact/foot_height 공통 사용) ──
         # 발 순서: FL=0, FR=1, RL=2, RR=3 (find_bodies 알파벳순)
         cos_phase = torch.cos(self._gait_phase)
@@ -426,6 +431,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/yaw_tracking": rew_yaw_tracking.mean().item(),
                 "rew/pos_drift": rew_pos_drift.mean().item(),
                 "diag/lateral_drift_m": lateral_drift.mean().item(),
+                "rew/heading_linear": rew_heading_linear.mean().item(),
+                "rew/yaw_rate_error": rew_yaw_rate_error.mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -434,7 +441,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height
                 + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance
                 + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
-                + rew_yaw_tracking + rew_pos_drift)
+                + rew_yaw_tracking + rew_pos_drift
+                + rew_heading_linear + rew_yaw_rate_error)
 
     # ------------------------------------------------------------------
     # Done / Termination

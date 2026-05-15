@@ -100,6 +100,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_energy: float = 0.0        # |τ|×|q̇| 에너지 패널티 (자연스러운 유연한 움직임)
     rew_scale_yaw_tracking: float = 0.0  # legged_gym 방식 exp(-yaw_err²/0.25) 보상 (yaw 추적 동기)
     rew_scale_pos_drift: float = 0.0     # 세계 좌표 Y축 누적 drift 패널티 (직진 명령 env만)
+    rew_scale_heading_linear: float = 0.0  # 선형 heading 오차 패널티 (exp 포화 보완)
+    rew_scale_yaw_rate_error: float = 0.0  # 선형 yaw rate 오차 패널티
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

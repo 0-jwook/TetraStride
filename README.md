@@ -140,3 +140,47 @@ source/quadrupedal_bot/quadrupedal_bot/tasks/direct/quadrupedal_bot/
 ```
 logs/rsl_rl/spot_micro_trot/2026-05-14_13-39-47/
 ```
+
+---
+
+## 주요 저장 모델 (Best Checkpoints)
+
+### v24b — 현재 최고 모델 ⭐
+```
+logs/rsl_rl/spot_micro_trot/2026-05-15_12-11-32/model_4999.pt
+```
+
+**시각화 명령어:**
+```bash
+DISPLAY=:1 conda run -n env_isaaclab python scripts/rsl_rl/play.py \
+  --task Template-Quadrupedal-Bot-Trot-v0 \
+  --num_envs 4 \
+  --checkpoint /home/wodnr/quadrupedal_bot/quadrupedal_bot/logs/rsl_rl/spot_micro_trot/2026-05-15_12-11-32/model_4999.pt
+```
+
+**성능 지표 (step 4999):**
+| 지표 | 값 |
+|------|----|
+| `actual_lin_vel_x` | 0.38 m/s |
+| `heading_err_deg` | 0.76° |
+| `lateral_drift_m` | 0.065 m |
+| `rew/gait` | 17.4 / 20 |
+| `rew/diagonal_symmetry` | -0.37 (초기 -2.28에서 개선) |
+| `term_ratio` | 0.0% |
+
+**특징:**
+- 진동 감소 ✅
+- 발 들기 동작 확인 ✅ (air_time 개선)
+- 완벽한 직선 보행 ✅
+- 걸음걸이 소폭 개선 필요 (개선 중)
+
+**v24b 핵심 설정:**
+- `gait: 5.0` (trot 페이즈 핵심 보상)
+- `air_time: 8.0` + `threshold: 0.12s`
+- `diagonal_symmetry: -1.0` (FL-RR/FR-RL 대각선 강제)
+- `lin_vel: 6.0` + `movement: 2.0` (제자리 trot 방지)
+- `heading: 12.0` + `heading_sigma: 0.025` (직선 유지)
+- `pos_drift: -8.0` (누적 drift 패널티)
+- `cmd_y = 0`, `cmd_ang_z = 0` (직진 전용 커리큘럼)
+
+**전이 기저:** `2026-05-14_18-56-54/model_4999.pt`

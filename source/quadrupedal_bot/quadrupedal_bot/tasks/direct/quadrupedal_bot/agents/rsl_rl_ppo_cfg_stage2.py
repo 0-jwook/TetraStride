@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v23b: 진동 억제 균형 조정 (action_rate/jerk/dof_acc 완화)."""
+    """Stage 2 — v24: 걸음걸이 1순위 (gait 5.0, air_time 8.0, 속도 보상 절반)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

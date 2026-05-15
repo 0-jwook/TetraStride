@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v24: 걸음걸이 1순위 (gait 5.0, air_time 8.0, 속도 보상 절반)."""
+    """Stage 2 — v24b: 속도+걸음걸이 동시 강화 (gait 5.0, lin_vel 6.0 원복)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

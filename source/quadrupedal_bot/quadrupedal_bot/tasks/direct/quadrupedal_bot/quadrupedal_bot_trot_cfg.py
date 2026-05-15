@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v24: 걸음걸이 1순위 — gait/air_time 강화, 속도 보상 절반, 진동 억제 균형."""
+    """Stage 2 v24b: 속도+걸음걸이 동시 강화 — 둘 다 충족해야 최대 보상."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -39,10 +39,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_heading_linear: float = -3.0   # 선형 heading 오차 패널티 (exp 포화 보완)
     rew_scale_yaw_rate_error: float = -2.0   # 선형 yaw rate 오차 패널티
 
-    # --- 3순위: 속도 (자연히 따라오도록) ---
-    rew_scale_lin_vel: float = 3.0           # 6.0→3.0: 속도가 전략을 지배하지 않도록
+    # --- 3순위: 속도 (걸음걸이와 동시에 충족해야 최대 보상) ---
+    rew_scale_lin_vel: float = 6.0           # 원복: 속도도 강하게 — 제자리 trot 방지
     rew_scale_ang_vel: float = 0.5
-    rew_scale_movement: float = 1.0          # 2.0→1.0: 동일
+    rew_scale_movement: float = 2.0          # 원복: 앞으로 가야만 이득
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_alive: float = 0.5
 

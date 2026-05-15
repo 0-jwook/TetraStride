@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v23: 진동 억제 + 직선 보행 강화 (dof_acc 25x, ang_vel_xy 5x, heading_sigma 타이트, 선형 패널티 추가)."""
+    """Stage 2 v23b: 진동 억제 균형 조정 — action_rate/jerk/dof_acc 완화, ang_vel_xy 5x 유지."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -52,9 +52,9 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 관절/토크 제약 ---
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.5     # v23: 5배 — 빠른 관절 출력 비용 상승
-    rew_scale_action_jerk: float = -0.10    # v23: 5배 — 고주파 진동 2차 미분 억제
-    rew_scale_dof_acc: float = -2.5e-5      # v23: 25배 — 진동 비용 ~3.4/step (속도보상 6.0 대비 억제력 확보)
+    rew_scale_action_rate: float = -0.15     # v23b: 1.5배 (0.10→0.15) — 과도한 억제 완화
+    rew_scale_action_jerk: float = -0.04    # v23b: 2배 (0.02→0.04) — 과도한 억제 완화
+    rew_scale_dof_acc: float = -5e-6        # v23b: 5배 (1e-6→5e-6) — 정지 local optima 방지
     rew_scale_contact_forces: float = -0.05 # v23: 발 착지 충격 패널티 활성화
     max_foot_contact_force: float = 30.0    # v23: 2.5kg 로봇 기준 임계값 (50→30N)
     rew_scale_termination: float = -5.0

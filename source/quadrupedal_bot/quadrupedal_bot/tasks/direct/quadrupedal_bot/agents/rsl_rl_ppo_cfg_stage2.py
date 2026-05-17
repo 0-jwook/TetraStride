@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v26: trot 패턴 강제 (diagonal_contact 신규, air_time_var 3x, diagonal_symmetry 3x)."""
+    """Stage 2 — v27: Isaac Lab GaitReward 포팅 (sync×async 곱셈 — 진짜 trot 타이밍 강제)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-15_14-13-31"   # v26 base: v25 (vel 0.384, heading 0.67°, drift 0.052m)
+    load_run = "2026-05-17_19-49-21"   # v27 base: v26 (vel 0.477, gait 19.6/20, heading 0.59°)
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

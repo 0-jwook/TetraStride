@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v26: trot 패턴 강제 — diagonal_contact 신규, air_time_var 3x, diagonal_symmetry 3x."""
+    """Stage 2 v27: Isaac Lab GaitReward 포팅 — sync×async 곱셈 구조로 trot 타이밍 강제."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -20,15 +20,15 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     gait_freq_hz: float = 1.5
 
-    # --- 1순위: Gait (trot 걸음걸이) ---
-    rew_scale_gait: float = 5.0
-    rew_scale_air_time: float = 10.0
-    air_time_threshold: float = 0.12         # 0.15→0.12s: 뒷다리도 달성 가능한 기준으로 완화
+    # --- 1순위: Gait (Isaac Lab GaitReward 방식) ---
+    rew_scale_gait: float = 10.0             # 5.0→10.0: sync×async 곱셈 구조 (max=1.0/step × scale)
+    rew_scale_air_time: float = 5.0          # 10.0→5.0: GaitReward가 타이밍 담당, air_time은 보조
+    air_time_threshold: float = 0.12
     rew_scale_swing_contact: float = -0.8
-    rew_scale_foot_height: float = 6.0       # 10.0→6.0: 실제 물리 변화 미미, 소폭 축소
-    rew_scale_diagonal_symmetry: float = -5.0  # -1.5→-5.0: FL=RR, FR=RL 동기 3배 강화
-    rew_scale_air_time_var: float = 15.0     # 5.0→15.0: 4발 에어타임 균일화 3배 강화
-    rew_scale_diagonal_contact: float = 4.0  # 신규: FL+RR 동시 stance/swing 직접 보상
+    rew_scale_foot_height: float = 6.0
+    rew_scale_diagonal_symmetry: float = -3.0  # -5.0→-3.0: GaitReward와 역할 분담
+    rew_scale_air_time_var: float = 10.0     # 15.0→10.0: 소폭 완화
+    rew_scale_diagonal_contact: float = 2.0  # 4.0→2.0: GaitReward 보조 역할로 축소
 
     # --- 2순위: 방향 (직선 보행) ---
     rew_scale_heading: float = 12.0           # 10.0→12.0: 방향 2순위로 격상

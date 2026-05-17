@@ -220,22 +220,42 @@ class QuadrupedalBotEnv(DirectRLEnv):
         contact_actual = (foot_forces_z.abs() > 1.0).float()
         cmd_has_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
 
-        # Gait clock reward
-        if self.cfg.rew_scale_gait != 0.0:
-            contact_error = torch.abs(contact_actual - contact_target).sum(dim=1)
-            rew_gait = (4.0 - contact_error) * self.cfg.rew_scale_gait * cmd_has_vel_gate
-        else:
-            rew_gait = torch.zeros(self.num_envs, device=self.device)
+        # ── Isaac Lab GaitReward (Spot 공식 구현 포팅) ──────────────────────────
+        # current_air_time: 현재 공중에 있는 누적 시간 (접지 시 0으로 리셋)
+        # current_contact_time: 현재 접지 중인 누적 시간 (이륙 시 0으로 리셋)
+        # Sync : FL-RR / FR-RL 쌍이 같은 타이밍 → 대각선 동기화
+        # Async: FL-FR / FL-RL / RR-FR / RR-RL 쌍이 반대 타이밍 → 비대각선 분리
+        # 곱셈 구조: 모든 조건 동시 충족 시에만 최대 보상 (front-back 원천 차단)
+        _air_t = self.contact_sensor.data.current_air_time[:, self._foot_ids]      # [N,4]
+        _cont_t = self.contact_sensor.data.current_contact_time[:, self._foot_ids]  # [N,4]
+        _gstd = 0.1
+        _gmax = 0.04  # max_err=0.2 → clamp at 0.04
 
-        # Diagonal pair contact reward: FL+RR 동시, FR+RL 동시 보상 (front-back 가짜 trot 차단)
-        # 발 순서: FL=0, FR=1, RL=2, RR=3
+        def _sync(f0, f1):
+            return torch.exp(-(
+                (_air_t[:, f0] - _air_t[:, f1]).square().clamp(max=_gmax)
+                + (_cont_t[:, f0] - _cont_t[:, f1]).square().clamp(max=_gmax)
+            ) / _gstd)
+
+        def _async(f0, f1):
+            return torch.exp(-(
+                (_air_t[:, f0] - _cont_t[:, f1]).square().clamp(max=_gmax)
+                + (_cont_t[:, f0] - _air_t[:, f1]).square().clamp(max=_gmax)
+            ) / _gstd)
+
+        # FL=0, FR=1, RL=2, RR=3
+        _sync_score = _sync(0, 3) * _sync(1, 2)                        # FL=RR, FR=RL
+        _async_score = (_async(0, 1) * _async(3, 2)                     # FL≠FR, RR≠RL
+                        * _async(0, 2) * _async(1, 3))                  # FL≠RL, FR≠RR
+        rew_gait = _sync_score * _async_score * self.cfg.rew_scale_gait * cmd_has_vel_gate
+
+        # 보조: 기존 대각선 contact 보상 (GaitReward의 보완재)
         fl = contact_actual[:, 0]
         fr = contact_actual[:, 1]
         rl = contact_actual[:, 2]
         rr = contact_actual[:, 3]
-        pair_a_active = (cos_phase < 0).float()   # FL+RR stance 구간
-        pair_b_active = (cos_phase >= 0).float()  # FR+RL stance 구간
-        # 대각 쌍이 동시에 올바른 상태(둘 다 stance or 둘 다 swing)일 때 보상
+        pair_a_active = (cos_phase < 0).float()
+        pair_b_active = (cos_phase >= 0).float()
         fl_rr_pair = pair_a_active * fl * rr + pair_b_active * (1 - fl) * (1 - rr)
         fr_rl_pair = pair_b_active * fr * rl + pair_a_active * (1 - fr) * (1 - rl)
         rew_diagonal_contact = (fl_rr_pair + fr_rl_pair) * self.cfg.rew_scale_diagonal_contact * cmd_has_vel_gate

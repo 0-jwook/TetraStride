@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v25: 발 높이 강화 (foot_height 10.0, air_time threshold 0.15s)."""
+    """Stage 2 — v26: trot 패턴 강제 (diagonal_contact 신규, air_time_var 3x, diagonal_symmetry 3x)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-15_12-11-32"   # v25 base: v24b best (vel 0.38, heading 0.76°)
+    load_run = "2026-05-15_14-13-31"   # v26 base: v25 (vel 0.384, heading 0.67°, drift 0.052m)
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

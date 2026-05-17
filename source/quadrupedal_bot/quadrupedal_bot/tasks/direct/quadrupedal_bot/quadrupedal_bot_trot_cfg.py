@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v25: 발 높이 강화 — foot_height 2.5x, air_time threshold↑, diagonal 강화."""
+    """Stage 2 v26: trot 패턴 강제 — diagonal_contact 신규, air_time_var 3x, diagonal_symmetry 3x."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -22,12 +22,13 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 1순위: Gait (trot 걸음걸이) ---
     rew_scale_gait: float = 5.0
-    rew_scale_air_time: float = 10.0         # 8.0→10.0: 에어타임 보상 강화
-    air_time_threshold: float = 0.15         # 0.12→0.15s: 더 길게 들어야 보상 (trot 36%→45%)
+    rew_scale_air_time: float = 10.0
+    air_time_threshold: float = 0.12         # 0.15→0.12s: 뒷다리도 달성 가능한 기준으로 완화
     rew_scale_swing_contact: float = -0.8
-    rew_scale_foot_height: float = 10.0      # 4.0→10.0: 발 높이 2.5배 — 2cm→5cm+ 유도
-    rew_scale_diagonal_symmetry: float = -1.5  # -1.0→-1.5: FL-RR/FR-RL 대각선 동기 강화
-    rew_scale_air_time_var: float = 5.0
+    rew_scale_foot_height: float = 6.0       # 10.0→6.0: 실제 물리 변화 미미, 소폭 축소
+    rew_scale_diagonal_symmetry: float = -5.0  # -1.5→-5.0: FL=RR, FR=RL 동기 3배 강화
+    rew_scale_air_time_var: float = 15.0     # 5.0→15.0: 4발 에어타임 균일화 3배 강화
+    rew_scale_diagonal_contact: float = 4.0  # 신규: FL+RR 동시 stance/swing 직접 보상
 
     # --- 2순위: 방향 (직선 보행) ---
     rew_scale_heading: float = 12.0           # 10.0→12.0: 방향 2순위로 격상

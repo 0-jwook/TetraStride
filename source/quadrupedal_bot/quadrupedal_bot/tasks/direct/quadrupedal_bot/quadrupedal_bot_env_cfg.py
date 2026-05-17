@@ -102,6 +102,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_pos_drift: float = 0.0     # 세계 좌표 Y축 누적 drift 패널티 (직진 명령 env만)
     rew_scale_heading_linear: float = 0.0  # 선형 heading 오차 패널티 (exp 포화 보완)
     rew_scale_yaw_rate_error: float = 0.0  # 선형 yaw rate 오차 패널티
+    rew_scale_diagonal_contact: float = 0.0  # 대각선 쌍(FL-RR, FR-RL) 동시 contact 보상
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

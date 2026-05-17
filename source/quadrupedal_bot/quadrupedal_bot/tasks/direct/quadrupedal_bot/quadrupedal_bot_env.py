@@ -227,6 +227,19 @@ class QuadrupedalBotEnv(DirectRLEnv):
         else:
             rew_gait = torch.zeros(self.num_envs, device=self.device)
 
+        # Diagonal pair contact reward: FL+RR 동시, FR+RL 동시 보상 (front-back 가짜 trot 차단)
+        # 발 순서: FL=0, FR=1, RL=2, RR=3
+        fl = contact_actual[:, 0]
+        fr = contact_actual[:, 1]
+        rl = contact_actual[:, 2]
+        rr = contact_actual[:, 3]
+        pair_a_active = (cos_phase < 0).float()   # FL+RR stance 구간
+        pair_b_active = (cos_phase >= 0).float()  # FR+RL stance 구간
+        # 대각 쌍이 동시에 올바른 상태(둘 다 stance or 둘 다 swing)일 때 보상
+        fl_rr_pair = pair_a_active * fl * rr + pair_b_active * (1 - fl) * (1 - rr)
+        fr_rl_pair = pair_b_active * fr * rl + pair_a_active * (1 - fr) * (1 - rl)
+        rew_diagonal_contact = (fl_rr_pair + fr_rl_pair) * self.cfg.rew_scale_diagonal_contact * cmd_has_vel_gate
+
         # Swing contact penalty (walk-these-ways 방식): swing 중 발이 닿으면 페널티
         # — 진동으로 air_time 채우는 reward hacking 직접 차단
         swing_contact_err = (contact_actual * swing_mask).sum(dim=1)
@@ -433,6 +446,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/lateral_drift_m": lateral_drift.mean().item(),
                 "rew/heading_linear": rew_heading_linear.mean().item(),
                 "rew/yaw_rate_error": rew_yaw_rate_error.mean().item(),
+                "rew/diagonal_contact": rew_diagonal_contact.mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -442,7 +456,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance
                 + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
                 + rew_yaw_tracking + rew_pos_drift
-                + rew_heading_linear + rew_yaw_rate_error)
+                + rew_heading_linear + rew_yaw_rate_error
+                + rew_diagonal_contact)
 
     # ------------------------------------------------------------------
     # Done / Termination

@@ -17,9 +17,9 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- spaces ---
     # obs: lin_vel_b(3) + ang_vel(3) + proj_gravity(3) + commands(3)
     #      + joint_pos_rel(12) + joint_vel(12) + last_actions(12) + gait_phase(2)
-    #      + heading_err_sin(1) + heading_err_cos(1) = 52
+    #      + heading_err_sin(1) + heading_err_cos(1) + per_foot_clock(4) = 56
     action_space: int = 12
-    observation_space: int = 52
+    observation_space: int = 56
     state_space: int = 0
 
     # --- simulation ---

@@ -5,19 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v29: CoT 에너지 보상(exp 정규화) + stance 발 속도 패널티 — v27 기반 전이학습."""
+    """Stage 2 — v30 (Option B): per-foot clock obs(56dim) — 처음부터 학습."""
 
     num_steps_per_env = 24
     max_iterations = 5000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
-    resume = True
-    load_run = "2026-05-17_19-49-21"   # v29 base: v27 (vel 0.477, gait 19.6/20, heading 0.59°)
-    load_checkpoint = "model_4999.pt"
+    resume = False   # per-foot clock으로 obs 52→56, 네트워크 구조 변경 → 처음부터
 
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,   # 높은 초기 노이즈 → 탐색 강화
+        init_noise_std=1.0,
         actor_obs_normalization=True,
         critic_obs_normalization=True,
         actor_hidden_dims=[512, 256, 128],
@@ -29,7 +27,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.015,  # 0.01→0.015: late training 탐색 소량 복원 (shuffling local minima 탈출)
+        entropy_coef=0.015,
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

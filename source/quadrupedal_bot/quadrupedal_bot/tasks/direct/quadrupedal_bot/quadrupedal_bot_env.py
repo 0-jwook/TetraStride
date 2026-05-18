@@ -125,6 +125,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
             torch.cos(_heading - self._target_heading),
         )
 
+        # Per-foot trot clock (Walk These Ways): FL=RR in-phase, FR=RL anti-phase
+        # FL(0),RR(3): sin(φ)        → 양수일 때 swing
+        # FR(1),RL(2): sin(φ + π) = -sin(φ) → 음수일 때 swing
+        _s = torch.sin(self._gait_phase)   # [N]
+        _per_foot_clock = torch.stack([_s, -_s, -_s, _s], dim=1)   # [N, 4]
+
         obs = torch.cat(
             [
                 self.robot.data.root_lin_vel_b,                      # [N, 3]
@@ -138,9 +144,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 torch.cos(self._gait_phase).unsqueeze(1),            # [N, 1]
                 torch.sin(self._heading_err).unsqueeze(1),           # [N, 1] heading error sin
                 torch.cos(self._heading_err).unsqueeze(1),           # [N, 1] heading error cos
+                _per_foot_clock,                                     # [N, 4] per-foot clock
             ],
             dim=-1,
-        )  # total: 3+3+3+3+12+12+12+1+1+1+1 = 52
+        )  # total: 3+3+3+3+12+12+12+1+1+1+1+4 = 56
         self._last_last_actions = self._last_actions.clone()
         self._last_actions = self.actions.clone()
         return {"policy": obs}

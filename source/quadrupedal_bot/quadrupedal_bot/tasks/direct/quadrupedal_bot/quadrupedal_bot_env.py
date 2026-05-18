@@ -229,8 +229,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _air_t = self.contact_sensor.data.current_air_time[:, self._foot_ids]      # [N,4]
         _cont_t = self.contact_sensor.data.current_contact_time[:, self._foot_ids]  # [N,4]
         _gstd = 0.1
-        _gmax = 0.5  # clamp 완화: 최대 오차 0.7s까지 full gradient 허용 (0.04→0.5)
-                     # 기존 0.04 clamp은 async 페널티를 exp(-0.4)=0.67로 제한 → 2다리 끌림 방치
+        _gmax = 0.04  # max_err=0.2s → clamp at 0.04 (Isaac Lab 공식값)
 
         def _sync(f0, f1):
             return torch.exp(-(
@@ -366,10 +365,18 @@ class QuadrupedalBotEnv(DirectRLEnv):
             + torch.sum(torch.square(fr_tc - rl_tc), dim=1)
         ) * self.cfg.rew_scale_diagonal_symmetry * cmd_has_vel_gate
 
-        # Energy penalty: |τ_i| × |q̇_i| (metabolic cost 모사 — 부드럽고 효율적인 움직임 유도)
-        rew_energy = torch.sum(
-            torch.abs(self.robot.data.applied_torque) * torch.abs(self.joint_vel), dim=1
-        ) * self.cfg.rew_scale_energy
+        # CoT Energy reward (ICRA 2025): exp(-Σ|τ||q̇| / (|vx|×1000 + ε))
+        # 수동으로 끌리는 발 = 에너지 낭비 → CoT 높아짐 → 보상 감소
+        # trot은 0.3-0.7m/s 구간에서 에너지 효율 최적 → 자연스럽게 trot 유도
+        _energy_raw = torch.sum(torch.abs(self.robot.data.applied_torque) * torch.abs(self.joint_vel), dim=1)
+        _vel_norm = torch.abs(self.robot.data.root_lin_vel_b[:, 0]).clamp(min=0.1) * 1000.0
+        rew_energy = torch.exp(-_energy_raw / _vel_norm) * self.cfg.rew_scale_energy
+
+        # Stance 발 속도 패널티: stance 중 발이 움직이면(끌리면) 직접 패널티
+        # 수동 다리 = stance 중 몸통이 앞으로 가면서 발이 상대적으로 뒤로 움직임 → 발 vel ≠ 0
+        foot_vel_xy = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
+        foot_vel_mag2 = torch.sum(foot_vel_xy ** 2, dim=-1)  # [N, 4]
+        rew_stance_vel = (contact_target * foot_vel_mag2).sum(dim=1) * self.cfg.rew_scale_stance_vel * cmd_has_vel_gate
 
         # DOF acceleration penalty: penalize motor vibration (Rudin 2021)
         dof_acc = (self.joint_vel - self._last_joint_vel) / self.step_dt
@@ -462,6 +469,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/action_jerk": rew_action_jerk.mean().item(),
                 "rew/diagonal_symmetry": rew_diagonal_symmetry.mean().item(),
                 "rew/energy": rew_energy.mean().item(),
+                "rew/stance_vel": rew_stance_vel.mean().item(),
                 "rew/yaw_tracking": rew_yaw_tracking.mean().item(),
                 "rew/pos_drift": rew_pos_drift.mean().item(),
                 "diag/lateral_drift_m": lateral_drift.mean().item(),
@@ -478,7 +486,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
                 + rew_yaw_tracking + rew_pos_drift
                 + rew_heading_linear + rew_yaw_rate_error
-                + rew_diagonal_contact)
+                + rew_diagonal_contact + rew_stance_vel)
 
     # ------------------------------------------------------------------
     # Done / Termination

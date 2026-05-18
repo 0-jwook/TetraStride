@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v28: GaitReward clamp 완화 + swing_contact×6 강화 + air_time_var×3 강화."""
+    """Stage 2 v29: CoT 에너지 보상 + stance 발 속도 패널티 — 끌림 다리 에너지/운동학으로 직접 차단."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -24,10 +24,14 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_gait: float = 10.0             # 5.0→10.0: sync×async 곱셈 구조 (max=1.0/step × scale)
     rew_scale_air_time: float = 5.0          # 10.0→5.0: GaitReward가 타이밍 담당, air_time은 보조
     air_time_threshold: float = 0.12
-    rew_scale_swing_contact: float = -5.0          # -0.8→-5.0: 매 스텝 직접 패널티 (끌림 발 직접 차단)
+    rew_scale_swing_contact: float = -0.8
     rew_scale_foot_height: float = 6.0
     rew_scale_diagonal_symmetry: float = -3.0  # -5.0→-3.0: GaitReward와 역할 분담
-    rew_scale_air_time_var: float = 30.0     # 10.0→30.0: 2활성/2수동 비대칭 강력 차단
+    rew_scale_air_time_var: float = 10.0
+
+    # --- CoT 에너지 + stance 발 속도 (v29 신규) ---
+    rew_scale_energy: float = 1.0            # CoT: exp(-energy/vel/1000), 끌림=에너지 낭비 차단
+    rew_scale_stance_vel: float = -5.0       # stance 중 발 속도²: 끌리는 발 직접 패널티
     rew_scale_diagonal_contact: float = 2.0  # 4.0→2.0: GaitReward 보조 역할로 축소
 
     # --- 2순위: 방향 (직선 보행) ---

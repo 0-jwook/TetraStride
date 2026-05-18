@@ -5,14 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v30 (Option B): per-foot clock obs(56dim) — 처음부터 학습."""
+    """Stage 2 — v31: per-foot clock(56dim) Stage1 전이학습 — 서기 기반 trot 학습."""
 
     num_steps_per_env = 24
     max_iterations = 5000
     save_interval = 200
     experiment_name = "spot_micro_trot"
 
-    resume = False   # per-foot clock으로 obs 52→56, 네트워크 구조 변경 → 처음부터
+    resume = True
+    load_run = "2026-05-18_18-38-11"   # Stage1 56dim (서기 안정화 완료)
+    load_checkpoint = "model_2999.pt"
+    load_experiment_name = "spot_micro_stance"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

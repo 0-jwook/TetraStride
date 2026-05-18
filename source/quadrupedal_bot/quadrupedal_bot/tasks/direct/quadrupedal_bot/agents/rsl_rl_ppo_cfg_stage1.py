@@ -5,16 +5,14 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO 설정 — 3000 iteration으로 자세 수렴."""
+    """Stage 1 (서기) PPO 설정 — v30 재시작: 56dim obs(per-foot clock 포함) 처음부터."""
 
     num_steps_per_env = 32
-    max_iterations = 5000
+    max_iterations = 3000
     save_interval = 200
     experiment_name = "spot_micro_stance"
 
-    resume = True
-    load_run = "2026-05-06_07-02-56"
-    load_checkpoint = "model_4999.pt"
+    resume = False   # 56dim obs로 네트워크 구조 변경 → 처음부터
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,

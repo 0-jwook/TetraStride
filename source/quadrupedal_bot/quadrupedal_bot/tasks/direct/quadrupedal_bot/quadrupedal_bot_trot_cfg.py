@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v30 (Option B): per-foot clock obs(52→56) + Walk These Ways 방식 — 처음부터 학습."""
+    """Stage 2 v32: per-foot clock(56dim) + velocity 대폭 강화 — 제자리 trot local optima 탈출."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -39,11 +39,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_heading_linear: float = -3.0
     rew_scale_yaw_rate_error: float = -2.0
 
-    # --- 3순위: 속도 ---
-    rew_scale_lin_vel: float = 6.0
+    # --- 3순위: 속도 (대폭 강화 — 제자리 trot local optima 탈출) ---
+    rew_scale_lin_vel: float = 15.0          # 6→15: cmd=0.5 vel=0 손실 = -7.5/step (이동 시 +15)
     rew_scale_ang_vel: float = 0.5
-    rew_scale_movement: float = 2.0
-    rew_scale_lin_vel_penalty: float = 0.0
+    rew_scale_movement: float = 6.0          # 2→6: 앞으로 가야만 이득
+    rew_scale_lin_vel_penalty: float = -3.0  # 속도 미달 직접 패널티 (vel<cmd 시 추가 손실)
     rew_scale_alive: float = 0.5
 
     # --- 자세 안정 ---

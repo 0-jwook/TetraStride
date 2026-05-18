@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v31: per-foot clock(56dim) Stage1 전이학습 — 서기 기반 trot 학습."""
+    """Stage 2 — v32: velocity 대폭 강화(15/6/-3) — Stage1(56dim) 전이, 제자리 trot 탈출."""
 
     num_steps_per_env = 24
     max_iterations = 5000

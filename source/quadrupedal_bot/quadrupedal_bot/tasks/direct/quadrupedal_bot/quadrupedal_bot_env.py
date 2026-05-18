@@ -229,7 +229,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _air_t = self.contact_sensor.data.current_air_time[:, self._foot_ids]      # [N,4]
         _cont_t = self.contact_sensor.data.current_contact_time[:, self._foot_ids]  # [N,4]
         _gstd = 0.1
-        _gmax = 0.04  # max_err=0.2 → clamp at 0.04
+        _gmax = 0.5  # clamp 완화: 최대 오차 0.7s까지 full gradient 허용 (0.04→0.5)
+                     # 기존 0.04 clamp은 async 페널티를 exp(-0.4)=0.67로 제한 → 2다리 끌림 방치
 
         def _sync(f0, f1):
             return torch.exp(-(

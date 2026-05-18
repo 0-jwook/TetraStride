@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v27: Isaac Lab GaitReward 포팅 (sync×async 곱셈 — 진짜 trot 타이밍 강제)."""
+    """Stage 2 — v28: GaitReward clamp 완화(_gmax 0.04→0.5) + swing_contact 강화(-0.8→-5.0) + air_time_var 강화(10→30)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-17_19-49-21"   # v27 base: v26 (vel 0.477, gait 19.6/20, heading 0.59°)
+    load_run = "2026-05-17_19-49-21"   # v28 base: v27 (vel 0.477, gait 19.6/20, heading 0.59°)
     load_checkpoint = "model_4999.pt"
 
     policy = RslRlPpoActorCriticCfg(

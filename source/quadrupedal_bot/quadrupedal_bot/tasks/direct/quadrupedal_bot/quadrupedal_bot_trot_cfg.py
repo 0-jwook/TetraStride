@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v32: per-foot clock(56dim) + velocity 대폭 강화 — 제자리 trot local optima 탈출."""
+    """Stage 2 v33: 발 들기 강제 — 최소 clearance 4cm 페널티 + swing_contact -8.0 (진동 보행 차단)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -22,9 +22,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 1순위: Gait ---
     rew_scale_gait: float = 10.0
     rew_scale_air_time: float = 5.0
-    air_time_threshold: float = 0.12
-    rew_scale_swing_contact: float = -2.0      # per-foot clock으로 정확한 swing 판단 → 강하게
-    rew_scale_foot_height: float = 6.0
+    air_time_threshold: float = 0.15           # 0.12→0.15: 짧은 진동 air_time 무효화
+    rew_scale_swing_contact: float = -8.0      # -2→-8: 진동 중 brief contact 강하게 차단
+    rew_scale_foot_height: float = 8.0         # 6→8: 3cm 이상 들어야 보상 (최소치 강화)
+    rew_scale_foot_clearance_penalty: float = -15.0  # 신규: swing 중 4cm 미달 직접 페널티
     rew_scale_diagonal_symmetry: float = -3.0
     rew_scale_air_time_var: float = 10.0
     rew_scale_diagonal_contact: float = 2.0

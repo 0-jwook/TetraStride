@@ -281,8 +281,13 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _calf_z_world = quat_apply(_calf_quat.reshape(_N * _nf, 4), _calf_z_local).reshape(_N, _nf, 3)
         foot_tip_z = (self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]
                       + _calf_z_world[:, :, 2] * (-0.130))
-        foot_clearance = foot_tip_z.clamp(min=0.0, max=0.10)  # 10cm cap: 실제 보폭 높이 보상 범위 확대
+        # 3cm 이상 들어야 보상 시작 (진동으로 살짝 들어도 보상 차단)
+        foot_clearance = (foot_tip_z - 0.03).clamp(min=0.0, max=0.07)
         rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
+
+        # swing 중 발끝이 4cm 미달이면 직접 페널티 (진동 보행 차단)
+        clearance_deficit = (0.04 - foot_tip_z.clamp(min=-0.02)).clamp(min=0.0) * swing_mask
+        rew_foot_clearance_penalty = clearance_deficit.sum(dim=1) * self.cfg.rew_scale_foot_clearance_penalty * cmd_has_vel_gate
 
         # Knee angle penalty: knee too-straight → shin/knee walking root cause
         # URDF "foot" joint = knee. Default -0.83 rad. Penalize if > -0.3 rad (too extended)
@@ -483,6 +488,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/heading_linear": rew_heading_linear.mean().item(),
                 "rew/yaw_rate_error": rew_yaw_rate_error.mean().item(),
                 "rew/diagonal_contact": rew_diagonal_contact.mean().item(),
+                "rew/foot_clearance_penalty": rew_foot_clearance_penalty.mean().item(),
+                "diag/foot_tip_z_mean": foot_tip_z.mean().item(),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -493,7 +500,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
                 + rew_yaw_tracking + rew_pos_drift
                 + rew_heading_linear + rew_yaw_rate_error
-                + rew_diagonal_contact + rew_stance_vel)
+                + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty)
 
     # ------------------------------------------------------------------
     # Done / Termination

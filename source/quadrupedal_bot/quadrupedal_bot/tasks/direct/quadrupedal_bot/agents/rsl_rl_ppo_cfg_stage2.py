@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v32: velocity 대폭 강화(15/6/-3) — Stage1(56dim) 전이, 제자리 trot 탈출."""
+    """Stage 2 — v33: 발 들기 강제 (clearance 페널티 -15 + swing_contact -8) — v32 전이."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,9 +13,9 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-18_18-38-11"   # Stage1 56dim (서기 안정화 완료)
-    load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_stance"
+    load_run = "2026-05-18_20-11-15"   # v32: vel=0.489m/s (속도 학습 완료, 보행 교정 필요)
+    load_checkpoint = "model_4999.pt"
+    load_experiment_name = "spot_micro_trot"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

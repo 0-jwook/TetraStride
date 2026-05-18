@@ -285,7 +285,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         foot_clearance = (foot_tip_z - 0.03).clamp(min=0.0, max=0.07)
         rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
 
-        # swing 중 발끝이 4cm 미달이면 직접 페널티 (진동 보행 차단)
+        # foot_tip_z 기반 clearance penalty (v33) — foot_tip_z가 이 로봇에서 ≈0으로 불안정하여 비활성
         clearance_deficit = (0.04 - foot_tip_z.clamp(min=-0.02)).clamp(min=0.0) * swing_mask
         rew_foot_clearance_penalty = clearance_deficit.sum(dim=1) * self.cfg.rew_scale_foot_clearance_penalty * cmd_has_vel_gate
 
@@ -300,6 +300,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
         knee_z = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]  # [N, 4]
         knee_low_in_stance = (0.04 - knee_z).clamp(min=0.0) * contact_actual
         rew_knee_height_stance = knee_low_in_stance.sum(dim=1) * self.cfg.rew_scale_knee_height_stance
+
+        # v34: knee_z 기반 swing 발 들기 강제
+        # 정상 stance knee_z ≈ 0.06m, 들었을 때 ≈ 0.10~0.13m → 0.09m 기준
+        # 보상: 0.09m 이상이면 비례 보상 (최대 0.05m 초과분)
+        knee_swing_reward = (knee_z - 0.09).clamp(min=0.0, max=0.05) * swing_mask
+        rew_knee_swing = knee_swing_reward.sum(dim=1) * self.cfg.rew_scale_knee_swing * cmd_has_vel_gate
+        # 페널티: 0.09m 미달이면 직접 페널티 (velocity 보상 압도하도록 강하게)
+        knee_swing_deficit = (0.09 - knee_z).clamp(min=0.0, max=0.03) * swing_mask
+        rew_knee_swing_penalty = knee_swing_deficit.sum(dim=1) * self.cfg.rew_scale_knee_swing_penalty * cmd_has_vel_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
@@ -490,6 +499,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/diagonal_contact": rew_diagonal_contact.mean().item(),
                 "rew/foot_clearance_penalty": rew_foot_clearance_penalty.mean().item(),
                 "diag/foot_tip_z_mean": foot_tip_z.mean().item(),
+                "rew/knee_swing": rew_knee_swing.mean().item(),
+                "rew/knee_swing_penalty": rew_knee_swing_penalty.mean().item(),
+                "diag/knee_z_mean": knee_z.mean().item(),
+                "diag/knee_z_swing_mean": (knee_z * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -500,7 +513,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_heading + rew_action_jerk + rew_diagonal_symmetry + rew_energy
                 + rew_yaw_tracking + rew_pos_drift
                 + rew_heading_linear + rew_yaw_rate_error
-                + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty)
+                + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty
+                + rew_knee_swing + rew_knee_swing_penalty)
 
     # ------------------------------------------------------------------
     # Done / Termination

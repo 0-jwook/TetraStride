@@ -104,7 +104,9 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_heading_linear: float = 0.0  # 선형 heading 오차 패널티 (exp 포화 보완)
     rew_scale_yaw_rate_error: float = 0.0  # 선형 yaw rate 오차 패널티
     rew_scale_diagonal_contact: float = 0.0  # 대각선 쌍(FL-RR, FR-RL) 동시 contact 보상
-    rew_scale_foot_clearance_penalty: float = 0.0  # swing 중 발끝 4cm 미달 시 직접 패널티
+    rew_scale_foot_clearance_penalty: float = 0.0  # swing 중 발끝 4cm 미달 시 직접 패널티 (v33, foot_tip_z 기반)
+    rew_scale_knee_swing: float = 0.0           # swing 중 knee_z > 0.09m 보상 (v34, 신뢰할 수 있는 발 들기 지표)
+    rew_scale_knee_swing_penalty: float = 0.0   # swing 중 knee_z < 0.09m 페널티 (v34)
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

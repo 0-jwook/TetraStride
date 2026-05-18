@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v33: 발 들기 강제 (clearance 페널티 -15 + swing_contact -8) — v32 전이."""
+    """Stage 2 — v34: knee_z 기반 발 들기 (-50 penalty) — v32 전이 (foot_tip_z 방식 폐기)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-18_20-11-15"   # v32: vel=0.489m/s (속도 학습 완료, 보행 교정 필요)
+    load_run = "2026-05-18_20-11-15"   # v32: vel=0.489m/s, 진동 보행 (knee_z로 교정 시도)
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

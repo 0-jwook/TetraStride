@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v43: swing 무릎 최솟값 -1.1 추가 + v42 전이."""
+    """Stage 2 — v44: 허벅지 min 1.0 + 무릎 min -1.2 + v43 전이."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_03-46-18"   # v42: 0% term, 0.385m/s, leg 1.154
+    load_run = "2026-05-20_05-27-13"   # v43: 0% term, 0.475m/s, knee -1.389
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

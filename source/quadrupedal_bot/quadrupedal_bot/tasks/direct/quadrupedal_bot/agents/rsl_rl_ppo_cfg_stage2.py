@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v37: leg_flex 완화(60→15) + knee 강화(80→100) + term 패널티 강화 (v35 전이)."""
+    """Stage 2 — v38: leg_flex 양방향 패널티 도입 (초과 들기 차단) + v35 전이."""
 
     num_steps_per_env = 24
     max_iterations = 5000

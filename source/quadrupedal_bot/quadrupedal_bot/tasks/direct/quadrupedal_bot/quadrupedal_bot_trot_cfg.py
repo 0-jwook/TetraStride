@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v37: leg_flex 완화(60→15, 목표1.1), knee 강화(100), term -10 (v35 전이)."""
+    """Stage 2 v38: leg_flex 양방향 패널티(목표1.1±), knee 강화(100), term -10 (v35 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17

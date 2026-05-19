@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v40: 도마뱀 걸음 방지(min_leg_angle) + foot_spread/joint_default 강화 (v35 전이)."""
+    """Stage 2 v41: 과제약 완화(joint_default -2, foot_spread -15, leg_angle_min 15) + 속도 강화 (v35 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -46,11 +46,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_heading_linear: float = -3.0
     rew_scale_yaw_rate_error: float = -2.0
 
-    # --- 4순위: 속도 (감소 — joint 보상이 압도하도록) ---
-    rew_scale_lin_vel: float = 8.0            # 15→8: joint 보상(-60) 압도 허용
+    # --- 속도 ---
+    rew_scale_lin_vel: float = 12.0           # 8→12: 정지 로컬옵티마 탈출
     rew_scale_ang_vel: float = 0.5
-    rew_scale_movement: float = 3.0           # 6→3
-    rew_scale_lin_vel_penalty: float = -2.0   # -3→-2: 과도한 속도 강요 완화
+    rew_scale_movement: float = 5.0           # 3→5: 이동 보상 강화
+    rew_scale_lin_vel_penalty: float = -2.0
     rew_scale_alive: float = 0.5
 
     # --- 자세 안정 ---
@@ -72,10 +72,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
-    rew_scale_joint_default: float = -6.0     # -1→-6: 기본 자세 유지력 강화 (도마뱀 자세 차단)
-    min_leg_angle: float = 0.75               # 허벅지 최솟값 (default 0.83보다 살짝 낮게 — 여유 허용)
-    rew_scale_leg_angle_min: float = 30.0     # 도마뱀 방향으로 내려가면 강한 패널티
-    rew_scale_foot_spread: float = -30.0      # -10→-30: 다리 벌림(도마뱀) 강하게 차단
+    rew_scale_joint_default: float = -2.0     # -6→-2: 과제약 완화, 이동 허용
+    min_leg_angle: float = 0.75               # 허벅지 최솟값 유지 (도마뱀 방향 차단)
+    rew_scale_leg_angle_min: float = 15.0     # 30→15: 과제약 완화
+    rew_scale_foot_spread: float = -15.0      # -30→-15: 과제약 완화
     rew_scale_foot_slip: float = -1.5
 
     # --- 무릎 보행 방지 ---

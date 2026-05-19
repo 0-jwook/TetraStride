@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v38: leg_flex 양방향 패널티(목표1.1±), knee 강화(100), term -10 (v35 전이)."""
+    """Stage 2 v39: 관절각 강제 제거 + foot_height 데드존 제거 + air_time 임계 완화 (v35 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -17,22 +17,20 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
     zero_command_prob: float = 0.1
 
-    gait_freq_hz: float = 1.2              # 1.5→1.2Hz: 스텝당 더 많은 시간 → 충분히 들 수 있음
+    gait_freq_hz: float = 1.2
 
-    # --- 1순위: 관절각 기반 발 들기 (v36: 목표각 강화) ---
-    swing_knee_target: float = -1.4           # 무릎 목표각 유지
-    swing_leg_target: float = 1.1             # 1.25→1.1rad: 과도 들기 방지 (v36에서 1.875 폭주)
-    rew_scale_knee_bend_swing: float = 100.0  # 80→100: 무릎 굴곡 강화
-    rew_scale_leg_flex_swing: float = 15.0    # 60→15: 과도 들기(v36 폭주 원인) 완화
+    # --- 관절각 강제: 제거 ---
+    rew_scale_knee_bend_swing: float = 0.0
+    rew_scale_leg_flex_swing: float = 0.0
     rew_scale_knee_swing: float = 0.0
     rew_scale_knee_swing_penalty: float = 0.0
 
-    # --- 2순위: Gait ---
+    # --- Gait ---
     rew_scale_gait: float = 10.0
-    rew_scale_air_time: float = 5.0
-    air_time_threshold: float = 0.18          # 0.15→0.18s: 짧은 shuffle 무효화
+    rew_scale_air_time: float = 10.0          # 5→10: 들기 시간 보상 강화
+    air_time_threshold: float = 0.05          # 0.18→0.05s: 짧은 들기에도 그라디언트
     rew_scale_swing_contact: float = -8.0
-    rew_scale_foot_height: float = 8.0
+    rew_scale_foot_height: float = 25.0       # 8→25: 연속 보상(데드존 제거)에 맞춰 스케일 상향
     rew_scale_foot_clearance_penalty: float = 0.0
     rew_scale_diagonal_symmetry: float = -3.0
     rew_scale_air_time_var: float = 10.0
@@ -70,11 +68,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_dof_acc: float = -2e-6
     rew_scale_contact_forces: float = -0.05
     max_foot_contact_force: float = 30.0
-    rew_scale_termination: float = -10.0      # -5→-10: 넘어짐 패널티 강화
+    rew_scale_termination: float = -10.0
 
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
-    rew_scale_joint_default: float = -3.0     # -8→-3: 발 들기 시 관절 이탈 저항 완화
+    rew_scale_joint_default: float = -1.0     # -3→-1: 자연 들기 허용 (관절각 강제 제거에 맞춰 완화)
     rew_scale_foot_spread: float = -10.0
     rew_scale_foot_slip: float = -1.5
 

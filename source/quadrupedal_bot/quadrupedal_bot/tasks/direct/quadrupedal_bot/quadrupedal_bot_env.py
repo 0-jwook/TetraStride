@@ -282,8 +282,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _calf_z_world = quat_apply(_calf_quat.reshape(_N * _nf, 4), _calf_z_local).reshape(_N, _nf, 3)
         foot_tip_z = (self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]
                       + _calf_z_world[:, :, 2] * (-0.130))
-        # 3cm 이상 들어야 보상 시작 (진동으로 살짝 들어도 보상 차단)
-        foot_clearance = (foot_tip_z - 0.03).clamp(min=0.0, max=0.07)
+        # 연속 보상: 0cm부터 최대 10cm까지 선형 (데드존 제거 — 작은 들기에도 그라디언트 유지)
+        foot_clearance = foot_tip_z.clamp(min=0.0, max=0.10)
         rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
 
         # foot_tip_z 기반 clearance penalty (v33) — foot_tip_z가 이 로봇에서 ≈0으로 불안정하여 비활성

@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v41: 과제약 완화(joint_default -2, foot_spread -15, leg_angle_min 15) + 속도 강화 (v35 전이)."""
+    """Stage 2 v42: swing 중 허벅지 최솟값 0.90 강제(swing_mask 적용) + v41 전이."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -72,9 +72,9 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
-    rew_scale_joint_default: float = -2.0     # -6→-2: 과제약 완화, 이동 허용
-    min_leg_angle: float = 0.75               # 허벅지 최솟값 유지 (도마뱀 방향 차단)
-    rew_scale_leg_angle_min: float = 15.0     # 30→15: 과제약 완화
+    rew_scale_joint_default: float = -2.0
+    min_leg_angle: float = 0.90               # 0.75→0.90: swing 중 허벅지 최솟값 상향 (기본값 0.83 초과)
+    rew_scale_leg_angle_min: float = 20.0     # 15→20: swing 전용이므로 강도 약간 상향
     rew_scale_foot_spread: float = -15.0      # -30→-15: 과제약 완화
     rew_scale_foot_slip: float = -1.5
 

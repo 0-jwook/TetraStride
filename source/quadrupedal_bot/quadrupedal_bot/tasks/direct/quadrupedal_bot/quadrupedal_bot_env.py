@@ -318,9 +318,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
         leg_flex_error = (leg_angle - self.cfg.swing_leg_target).abs().clamp(max=0.5) * swing_mask
         rew_leg_flex_swing = -leg_flex_error.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * cmd_has_vel_gate
 
-        # 도마뱀 걸음 방지: 허벅지가 기본값 이하로 내려가면 패널티 (v40)
-        leg_min_deficit = (self.cfg.min_leg_angle - leg_angle).clamp(min=0.0, max=0.3)
-        rew_leg_angle_min = -leg_min_deficit.sum(dim=1) * self.cfg.rew_scale_leg_angle_min
+        # Swing 중 허벅지 최솟값 강제: swing 중에만 적용 (v42: stance는 자유, swing에서만 들기 강제)
+        leg_min_deficit = (self.cfg.min_leg_angle - leg_angle).clamp(min=0.0, max=0.3) * swing_mask
+        rew_leg_angle_min = -leg_min_deficit.sum(dim=1) * self.cfg.rew_scale_leg_angle_min * cmd_has_vel_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)

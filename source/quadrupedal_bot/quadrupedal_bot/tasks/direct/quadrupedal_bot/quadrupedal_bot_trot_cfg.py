@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v35: 관절각 기반 발 들기 직접 강제 — knee_bend -60 + leg_flex -30 (Stage1 전이)."""
+    """Stage 2 v36: 발 들기 목표각 강화 — knee -1.4rad, leg 1.25rad, joint_default 완화 (v35 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -19,11 +19,13 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     gait_freq_hz: float = 1.2              # 1.5→1.2Hz: 스텝당 더 많은 시간 → 충분히 들 수 있음
 
-    # --- 1순위: 관절각 기반 발 들기 (v35 핵심) ---
-    rew_scale_knee_bend_swing: float = 60.0   # swing 중 무릎 굴곡 강제 (foot_joint < -1.1rad)
-    rew_scale_leg_flex_swing: float = 30.0    # swing 중 허벅지 들기 강제 (leg_joint > 1.05rad)
-    rew_scale_knee_swing: float = 0.0         # v34 방식 비활성
-    rew_scale_knee_swing_penalty: float = 0.0 # v34 방식 비활성
+    # --- 1순위: 관절각 기반 발 들기 (v36: 목표각 강화) ---
+    swing_knee_target: float = -1.4           # -1.1→-1.4rad: 무릎 더 깊이 굽혀서 발끝 상승
+    swing_leg_target: float = 1.25            # 1.05→1.25rad: 허벅지 더 높이 들어서 무릎 자체를 올림
+    rew_scale_knee_bend_swing: float = 80.0   # 60→80: 더 강하게 강제
+    rew_scale_leg_flex_swing: float = 60.0    # 30→60: knee와 동등하게 강화
+    rew_scale_knee_swing: float = 0.0
+    rew_scale_knee_swing_penalty: float = 0.0
 
     # --- 2순위: Gait ---
     rew_scale_gait: float = 10.0
@@ -72,7 +74,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
-    rew_scale_joint_default: float = -8.0
+    rew_scale_joint_default: float = -3.0     # -8→-3: 발 들기 시 관절 이탈 저항 완화
     rew_scale_foot_spread: float = -10.0
     rew_scale_foot_slip: float = -1.5
 

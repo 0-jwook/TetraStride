@@ -308,15 +308,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
         knee_swing_deficit = (0.09 - knee_z).clamp(min=0.0, max=0.03) * swing_mask
         rew_knee_swing_penalty = knee_swing_deficit.sum(dim=1) * self.cfg.rew_scale_knee_swing_penalty * cmd_has_vel_gate
 
-        # v35: 관절각 기반 발 들기 직접 강제 ─────────────────────────────────────
-        # 무릎(foot joint) 굴곡 강제: default=-0.83rad, 목표<-1.1rad (calf 접힘 → 발끝 올라감)
-        # joint_pos 순서: find_joints(".*_foot") → knee joint [N, 4]
-        knee_bend_deficit = (knee_angle - (-1.1)).clamp(min=0.0, max=0.5) * swing_mask
+        # v35/v36: 관절각 기반 발 들기 직접 강제 ──────────────────────────────────
+        # 무릎(foot joint) 굴곡 강제: default=-0.83rad, cfg 목표각 이하로 굽혀야
+        leg_angle = self.joint_pos[:, self._leg_ids]  # [N, 4]
+        knee_bend_deficit = (knee_angle - self.cfg.swing_knee_target).clamp(min=0.0, max=0.6) * swing_mask
         rew_knee_bend_swing = -knee_bend_deficit.sum(dim=1) * self.cfg.rew_scale_knee_bend_swing * cmd_has_vel_gate
 
-        # 허벅지(leg joint) 들기 강제: default=0.83rad, 목표>1.05rad (thigh 올라감)
-        leg_angle = self.joint_pos[:, self._leg_ids]  # [N, 4]
-        leg_flex_deficit = (1.05 - leg_angle).clamp(min=0.0, max=0.4) * swing_mask
+        # 허벅지(leg joint) 들기 강제: default=0.83rad, cfg 목표각 이상으로 들어야
+        leg_flex_deficit = (self.cfg.swing_leg_target - leg_angle).clamp(min=0.0, max=0.5) * swing_mask
         rew_leg_flex_swing = -leg_flex_deficit.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * cmd_has_vel_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단

@@ -107,8 +107,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_foot_clearance_penalty: float = 0.0  # swing 중 발끝 4cm 미달 시 직접 패널티 (v33, foot_tip_z 기반)
     rew_scale_knee_swing: float = 0.0           # swing 중 knee_z > 0.09m 보상 (v34)
     rew_scale_knee_swing_penalty: float = 0.0   # swing 중 knee_z < 0.09m 페널티 (v34)
-    rew_scale_knee_bend_swing: float = 0.0      # swing 중 무릎 굴곡 강제: foot_joint < -1.1rad (v35)
-    rew_scale_leg_flex_swing: float = 0.0       # swing 중 허벅지 들기 강제: leg_joint > 1.05rad (v35)
+    rew_scale_knee_bend_swing: float = 0.0      # swing 중 무릎 굴곡 강제 (v35)
+    rew_scale_leg_flex_swing: float = 0.0       # swing 중 허벅지 들기 강제 (v35)
+    swing_knee_target: float = -1.1             # swing 중 무릎(foot joint) 목표각 (rad) — 이 이하로 굽혀야
+    swing_leg_target: float = 1.05              # swing 중 허벅지(leg joint) 목표각 (rad) — 이 이상으로 들어야
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

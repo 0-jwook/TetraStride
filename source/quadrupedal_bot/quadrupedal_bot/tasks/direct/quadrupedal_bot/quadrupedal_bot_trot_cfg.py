@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v42: swing 중 허벅지 최솟값 0.90 강제(swing_mask 적용) + v41 전이."""
+    """Stage 2 v43: swing 무릎 최솟값 -1.1 추가(허벅지+무릎 동시 강제) + v42 전이."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -73,8 +73,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
     rew_scale_joint_default: float = -2.0
-    min_leg_angle: float = 0.90               # 0.75→0.90: swing 중 허벅지 최솟값 상향 (기본값 0.83 초과)
-    rew_scale_leg_angle_min: float = 20.0     # 15→20: swing 전용이므로 강도 약간 상향
+    min_leg_angle: float = 0.90               # swing 중 허벅지 최솟값 유지
+    rew_scale_leg_angle_min: float = 20.0
+    min_knee_angle_swing: float = -1.1        # swing 중 무릎 최솟값 (-0.83 기본보다 더 굽혀야)
+    rew_scale_swing_min_knee: float = 20.0    # 무릎 swing 최솟값 패널티
     rew_scale_foot_spread: float = -15.0      # -30→-15: 과제약 완화
     rew_scale_foot_slip: float = -1.5
 

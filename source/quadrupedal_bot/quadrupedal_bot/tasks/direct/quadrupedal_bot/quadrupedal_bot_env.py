@@ -318,9 +318,13 @@ class QuadrupedalBotEnv(DirectRLEnv):
         leg_flex_error = (leg_angle - self.cfg.swing_leg_target).abs().clamp(max=0.5) * swing_mask
         rew_leg_flex_swing = -leg_flex_error.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * cmd_has_vel_gate
 
-        # Swing 중 허벅지 최솟값 강제: swing 중에만 적용 (v42: stance는 자유, swing에서만 들기 강제)
+        # Swing 중 허벅지 최솟값 강제 (v42)
         leg_min_deficit = (self.cfg.min_leg_angle - leg_angle).clamp(min=0.0, max=0.3) * swing_mask
         rew_leg_angle_min = -leg_min_deficit.sum(dim=1) * self.cfg.rew_scale_leg_angle_min * cmd_has_vel_gate
+
+        # Swing 중 무릎 최솟값 강제 (v43): swing 중 무릎이 최소 min_knee_angle 이상 굽혀져야
+        knee_min_deficit = (knee_angle - self.cfg.min_knee_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
+        rew_swing_min_knee = -knee_min_deficit.sum(dim=1) * self.cfg.rew_scale_swing_min_knee * cmd_has_vel_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
@@ -518,6 +522,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/knee_bend_swing": rew_knee_bend_swing.mean().item(),
                 "rew/leg_flex_swing": rew_leg_flex_swing.mean().item(),
                 "rew/leg_angle_min": rew_leg_angle_min.mean().item(),
+                "rew/swing_min_knee": rew_swing_min_knee.mean().item(),
                 "diag/knee_angle_swing": (knee_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_swing": (leg_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_mean": leg_angle.mean().item(),
@@ -534,7 +539,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty
                 + rew_knee_swing + rew_knee_swing_penalty
                 + rew_knee_bend_swing + rew_leg_flex_swing
-                + rew_leg_angle_min)
+                + rew_leg_angle_min + rew_swing_min_knee)
 
     # ------------------------------------------------------------------
     # Done / Termination

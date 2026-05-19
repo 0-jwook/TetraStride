@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v36: 발 들기 목표각 강화 knee-1.4/leg1.25, joint_default -3 (v35 전이)."""
+    """Stage 2 — v37: leg_flex 완화(60→15) + knee 강화(80→100) + term 패널티 강화 (v35 전이)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-19_11-32-45"   # v35: 무릎 굴곡 습관 학습 완료 (-1.38rad)
+    load_run = "2026-05-19_11-32-45"   # v35: 안정적 보행 + 무릎 굴곡 (-1.38rad)
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

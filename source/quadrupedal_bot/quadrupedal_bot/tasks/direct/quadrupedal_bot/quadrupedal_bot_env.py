@@ -26,6 +26,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         self._foot_body_ids_robot, _ = self.robot.find_bodies(".*foot_link")
         self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
         self._knee_ids, _ = self.robot.find_joints(".*_foot")   # URDF "foot" joint = knee joint
+        self._leg_ids, _ = self.robot.find_joints(".*_leg")     # thigh (hip flex/ext) joint
         # All non-foot body IDs for knee/belly contact penalty
         all_body_ids, _ = self.contact_sensor.find_bodies(".*")
         foot_id_set = set(int(i) for i in self._foot_ids)
@@ -301,14 +302,22 @@ class QuadrupedalBotEnv(DirectRLEnv):
         knee_low_in_stance = (0.04 - knee_z).clamp(min=0.0) * contact_actual
         rew_knee_height_stance = knee_low_in_stance.sum(dim=1) * self.cfg.rew_scale_knee_height_stance
 
-        # v34: knee_z 기반 swing 발 들기 강제
-        # 정상 stance knee_z ≈ 0.06m, 들었을 때 ≈ 0.10~0.13m → 0.09m 기준
-        # 보상: 0.09m 이상이면 비례 보상 (최대 0.05m 초과분)
+        # v34: knee_z 기반 swing 발 들기 (v35에서 약화, 보조 역할)
         knee_swing_reward = (knee_z - 0.09).clamp(min=0.0, max=0.05) * swing_mask
         rew_knee_swing = knee_swing_reward.sum(dim=1) * self.cfg.rew_scale_knee_swing * cmd_has_vel_gate
-        # 페널티: 0.09m 미달이면 직접 페널티 (velocity 보상 압도하도록 강하게)
         knee_swing_deficit = (0.09 - knee_z).clamp(min=0.0, max=0.03) * swing_mask
         rew_knee_swing_penalty = knee_swing_deficit.sum(dim=1) * self.cfg.rew_scale_knee_swing_penalty * cmd_has_vel_gate
+
+        # v35: 관절각 기반 발 들기 직접 강제 ─────────────────────────────────────
+        # 무릎(foot joint) 굴곡 강제: default=-0.83rad, 목표<-1.1rad (calf 접힘 → 발끝 올라감)
+        # joint_pos 순서: find_joints(".*_foot") → knee joint [N, 4]
+        knee_bend_deficit = (knee_angle - (-1.1)).clamp(min=0.0, max=0.5) * swing_mask
+        rew_knee_bend_swing = -knee_bend_deficit.sum(dim=1) * self.cfg.rew_scale_knee_bend_swing * cmd_has_vel_gate
+
+        # 허벅지(leg joint) 들기 강제: default=0.83rad, 목표>1.05rad (thigh 올라감)
+        leg_angle = self.joint_pos[:, self._leg_ids]  # [N, 4]
+        leg_flex_deficit = (1.05 - leg_angle).clamp(min=0.0, max=0.4) * swing_mask
+        rew_leg_flex_swing = -leg_flex_deficit.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * cmd_has_vel_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
@@ -503,6 +512,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/knee_swing_penalty": rew_knee_swing_penalty.mean().item(),
                 "diag/knee_z_mean": knee_z.mean().item(),
                 "diag/knee_z_swing_mean": (knee_z * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
+                "rew/knee_bend_swing": rew_knee_bend_swing.mean().item(),
+                "rew/leg_flex_swing": rew_leg_flex_swing.mean().item(),
+                "diag/knee_angle_swing": (knee_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
+                "diag/leg_angle_swing": (leg_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
@@ -514,7 +527,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_yaw_tracking + rew_pos_drift
                 + rew_heading_linear + rew_yaw_rate_error
                 + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty
-                + rew_knee_swing + rew_knee_swing_penalty)
+                + rew_knee_swing + rew_knee_swing_penalty
+                + rew_knee_bend_swing + rew_leg_flex_swing)
 
     # ------------------------------------------------------------------
     # Done / Termination

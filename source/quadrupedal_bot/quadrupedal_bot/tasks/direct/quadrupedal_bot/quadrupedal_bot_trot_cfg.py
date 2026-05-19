@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v34: knee_z 기반 발 들기 강제 — knee_swing_penalty -50 + swing_contact -8 (v32 전이)."""
+    """Stage 2 v35: 관절각 기반 발 들기 직접 강제 — knee_bend -60 + leg_flex -30 (Stage1 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -17,22 +17,26 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
     zero_command_prob: float = 0.1
 
-    gait_freq_hz: float = 1.5
+    gait_freq_hz: float = 1.2              # 1.5→1.2Hz: 스텝당 더 많은 시간 → 충분히 들 수 있음
 
-    # --- 1순위: Gait ---
+    # --- 1순위: 관절각 기반 발 들기 (v35 핵심) ---
+    rew_scale_knee_bend_swing: float = 60.0   # swing 중 무릎 굴곡 강제 (foot_joint < -1.1rad)
+    rew_scale_leg_flex_swing: float = 30.0    # swing 중 허벅지 들기 강제 (leg_joint > 1.05rad)
+    rew_scale_knee_swing: float = 0.0         # v34 방식 비활성
+    rew_scale_knee_swing_penalty: float = 0.0 # v34 방식 비활성
+
+    # --- 2순위: Gait ---
     rew_scale_gait: float = 10.0
     rew_scale_air_time: float = 5.0
-    air_time_threshold: float = 0.15
+    air_time_threshold: float = 0.18          # 0.15→0.18s: 짧은 shuffle 무효화
     rew_scale_swing_contact: float = -8.0
     rew_scale_foot_height: float = 8.0
-    rew_scale_foot_clearance_penalty: float = 0.0   # v33 방식 비활성 (foot_tip_z 불안정)
-    rew_scale_knee_swing: float = 15.0              # 신규: knee_z > 0.09m 보상
-    rew_scale_knee_swing_penalty: float = -50.0     # 신규: knee_z < 0.09m 페널티 (vel 보상 압도)
+    rew_scale_foot_clearance_penalty: float = 0.0
     rew_scale_diagonal_symmetry: float = -3.0
     rew_scale_air_time_var: float = 10.0
     rew_scale_diagonal_contact: float = 2.0
 
-    # --- 2순위: 방향 ---
+    # --- 3순위: 방향 ---
     rew_scale_heading: float = 12.0
     heading_sigma: float = 0.025
     rew_scale_pos_drift: float = -8.0
@@ -42,11 +46,11 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_heading_linear: float = -3.0
     rew_scale_yaw_rate_error: float = -2.0
 
-    # --- 3순위: 속도 (대폭 강화 — 제자리 trot local optima 탈출) ---
-    rew_scale_lin_vel: float = 15.0          # 6→15: cmd=0.5 vel=0 손실 = -7.5/step (이동 시 +15)
+    # --- 4순위: 속도 (감소 — joint 보상이 압도하도록) ---
+    rew_scale_lin_vel: float = 8.0            # 15→8: joint 보상(-60) 압도 허용
     rew_scale_ang_vel: float = 0.5
-    rew_scale_movement: float = 6.0          # 2→6: 앞으로 가야만 이득
-    rew_scale_lin_vel_penalty: float = -3.0  # 속도 미달 직접 패널티 (vel<cmd 시 추가 손실)
+    rew_scale_movement: float = 3.0           # 6→3
+    rew_scale_lin_vel_penalty: float = -2.0   # -3→-2: 과도한 속도 강요 완화
     rew_scale_alive: float = 0.5
 
     # --- 자세 안정 ---

@@ -111,6 +111,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_leg_flex_swing: float = 0.0       # swing 중 허벅지 들기 강제 (v35)
     swing_knee_target: float = -1.1             # swing 중 무릎(foot joint) 목표각 (rad) — 이 이하로 굽혀야
     swing_leg_target: float = 1.05              # swing 중 허벅지(leg joint) 목표각 (rad) — 이 이상으로 들어야
+    min_leg_angle: float = 0.0                  # 허벅지 최솟값 (이하로 내려가면 도마뱀 걸음 — v40)
+    rew_scale_leg_angle_min: float = 0.0        # 도마뱀 걸음 방지 패널티 (v40)
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

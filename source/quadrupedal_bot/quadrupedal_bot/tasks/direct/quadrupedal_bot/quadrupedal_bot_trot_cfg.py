@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v39: 관절각 강제 제거 + foot_height 데드존 제거 + air_time 임계 완화 (v35 전이)."""
+    """Stage 2 v40: 도마뱀 걸음 방지(min_leg_angle) + foot_spread/joint_default 강화 (v35 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -72,8 +72,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     # --- 자세 유지 ---
     target_foot_span: float = 0.10
-    rew_scale_joint_default: float = -1.0     # -3→-1: 자연 들기 허용 (관절각 강제 제거에 맞춰 완화)
-    rew_scale_foot_spread: float = -10.0
+    rew_scale_joint_default: float = -6.0     # -1→-6: 기본 자세 유지력 강화 (도마뱀 자세 차단)
+    min_leg_angle: float = 0.75               # 허벅지 최솟값 (default 0.83보다 살짝 낮게 — 여유 허용)
+    rew_scale_leg_angle_min: float = 30.0     # 도마뱀 방향으로 내려가면 강한 패널티
+    rew_scale_foot_spread: float = -30.0      # -10→-30: 다리 벌림(도마뱀) 강하게 차단
     rew_scale_foot_slip: float = -1.5
 
     # --- 무릎 보행 방지 ---

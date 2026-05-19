@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v39: 관절각 강제 제거 + foot_height 데드존/air_time 임계 수정 (v35 전이)."""
+    """Stage 2 — v40: 도마뱀 걸음 방지(min_leg_angle 0.75) + foot_spread -30 + v35 전이."""
 
     num_steps_per_env = 24
     max_iterations = 5000

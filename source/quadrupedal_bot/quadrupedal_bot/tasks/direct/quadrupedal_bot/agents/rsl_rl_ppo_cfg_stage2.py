@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage1.5: 제자리 trot 순서 발 들기 학습 (v45 전이, hip→0 + knee→-1.4 유도)."""
+    """Stage1.5v2: 제자리 trot 발 들기 (air_time 버그 수정 후 model_600 재시작)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,8 +13,8 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_09-18-06"   # v45: 가장 안정적인 베이스 (leg_angle=0.39, term=0%)
-    load_checkpoint = "model_4999.pt"
+    load_run = "2026-05-20_23-45-31"   # Stage1.5: iter600 체크포인트
+    load_checkpoint = "model_600.pt"
     load_experiment_name = "spot_micro_trot"
 
     policy = RslRlPpoActorCriticCfg(

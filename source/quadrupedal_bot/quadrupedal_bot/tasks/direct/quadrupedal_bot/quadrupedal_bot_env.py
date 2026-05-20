@@ -161,6 +161,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
         first_contact = self.contact_sensor.compute_first_contact(self.step_dt)[:, self._foot_ids]
         last_air_time = self.contact_sensor.data.last_air_time[:, self._foot_ids]
 
+        _cmd_has_vel_early = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+        _gait_gate_early = torch.ones_like(_cmd_has_vel_early) if self.cfg.gait_reward_always_on else _cmd_has_vel_early
+
         base_rew = compute_rewards(
             self.cfg.rew_scale_alive,
             self.cfg.rew_scale_lin_vel,
@@ -186,6 +189,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             self.reset_terminated,
             last_air_time,
             first_contact,
+            _gait_gate_early,
         )
 
         # yaw 추적: legged_gym 방식 exp 보상 (패널티 단독 → 보상+패널티 병행)
@@ -470,10 +474,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
             _ang_vel_err = torch.square(self._commands[:, 2] - self.robot.data.root_ang_vel_b[:, 2])
             rew_ang_vel_log = torch.exp(-_ang_vel_err / 0.25) * self.cfg.rew_scale_ang_vel
             # air_time reward (for logging)
-            _cmd_has_vel = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
             _air_time_log = torch.sum(
                 (last_air_time - self.cfg.air_time_threshold).clamp(min=0.0) * first_contact.float(), dim=1
-            ) * self.cfg.rew_scale_air_time * _cmd_has_vel
+            ) * self.cfg.rew_scale_air_time * _gait_gate_early
             per_step_net = (rew_alive_log + rew_upright + rew_gravity_log + rew_foot_slip
                             + rew_joint_default + rew_foot_spread + rew_stand_still + rew_dof_acc
                             + rew_dof_pos_limits + rew_contact_forces
@@ -663,6 +666,7 @@ def compute_rewards(
     reset_terminated: torch.Tensor,
     last_air_time: torch.Tensor,
     first_contact: torch.Tensor,
+    gait_gate: torch.Tensor,
 ) -> torch.Tensor:
     rew_alive = rew_scale_alive * (1.0 - reset_terminated.float())
 
@@ -686,10 +690,9 @@ def compute_rewards(
     rew_action_rate = torch.sum(torch.square(actions - last_actions), dim=1) * rew_scale_action_rate
     rew_termination = reset_terminated.float() * rew_scale_termination
 
-    cmd_has_vel = (torch.norm(commands[:, :2], dim=1) > 0.1).float()
     rew_air_time = torch.sum(
         (last_air_time - air_time_threshold).clamp(min=0.0) * first_contact.float(), dim=1
-    ) * rew_scale_air_time * cmd_has_vel
+    ) * rew_scale_air_time * gait_gate
 
     living = (
         rew_alive

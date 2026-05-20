@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v48: foot_height 60 + clearance_penalty -15 + v45 전이 (reward 기반 높이 들기)."""
+    """Stage 2 — v49: max_leg 0.5/scale8 (완만한 제약) + v45 보상 + v41 전이."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_05-27-13"   # v43: 0% term, 0.475m/s, knee -1.389 (안정 베이스)
+    load_run = "2026-05-20_02-04-15"   # v41: 안정 베이스 (v45 출발점)
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

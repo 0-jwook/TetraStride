@@ -5,9 +5,9 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage1.5: 제자리 trot 순서 발 들기 학습.
-    역관절 구조 활용 — hip 앞으로 + knee 구부려 발끝 4~7cm 들기.
-    속도 명령/보상 완전 제거, gait_reward_always_on=True로 cmd=0에서도 발 들기 보상 활성화.
+    """Stage2: Stage1.5 trot leg-lifting 위에 느린 전진 추가.
+    gait_reward_always_on=True 유지 → cmd=0에서도 발 들기 보존.
+    속도 보상은 중간 강도(gait 보상이 여전히 우세) — 이전 실패 방지.
     """
 
     episode_length_s: float = 15.0
@@ -15,21 +15,21 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     action_scale: float = 0.35
 
-    # --- 제자리 고정 (속도 명령 없음) ---
-    cmd_lin_vel_x_range: tuple = (0.0, 0.0)
-    cmd_lin_vel_y_range: tuple = (0.0, 0.0)
-    cmd_ang_vel_z_range: tuple = (0.0, 0.0)
-    zero_command_prob: float = 0.0           # 항상 (0,0,0)
+    # --- 느린 전진 명령 (Stage1.5에서 점진적 전환) ---
+    cmd_lin_vel_x_range: tuple = (0.0, 0.3)   # 0~0.3 m/s 천천히
+    cmd_lin_vel_y_range: tuple = (-0.1, 0.1)  # 좌우 소량
+    cmd_ang_vel_z_range: tuple = (-0.3, 0.3)  # 약간의 yaw
+    zero_command_prob: float = 0.2            # 20%는 제자리(Stage1.5 기술 보존)
 
-    # cmd=0이어도 gait/발 들기 보상 항상 활성화
+    # cmd=0이어도 gait/발 들기 보상 항상 활성화 유지
     gait_reward_always_on: bool = True
 
     gait_freq_hz: float = 1.2
 
-    # --- 속도 보상 전부 제거 ---
-    rew_scale_lin_vel: float = 0.0
-    rew_scale_ang_vel: float = 0.0
-    rew_scale_movement: float = 0.0
+    # --- 속도 보상 (gait보다 약하게 — 이전 실패 원인: 속도가 gait를 압도) ---
+    rew_scale_lin_vel: float = 3.0      # gait=15 대비 1/5 수준
+    rew_scale_ang_vel: float = 0.5
+    rew_scale_movement: float = 1.5     # 방향 보너스 소량
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_heading: float = 0.0
     rew_scale_pos_drift: float = 0.0
@@ -109,5 +109,5 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_energy: float = 0.0
     rew_scale_stance_vel: float = 0.0
     min_leg_angle: float = 0.3
-    push_interval_s: float = 0.0   # 제자리 학습 중 푸시 비활성
-    max_push_vel: float = 0.0
+    push_interval_s: float = 8.0   # Stage2: 약한 외란으로 견고성 훈련
+    max_push_vel: float = 0.3

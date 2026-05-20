@@ -5,9 +5,8 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage2: Stage1.5 trot leg-lifting 위에 느린 전진 추가.
-    gait_reward_always_on=True 유지 → cmd=0에서도 발 들기 보존.
-    속도 보상은 중간 강도(gait 보상이 여전히 우세) — 이전 실패 방지.
+    """Stage3: Stage2(0.18m/s) 전이 → 빠른 전진 보행(최대 0.5m/s).
+    gait=14.2 유지하며 속도 목표 높임. gait보상 그대로, 속도보상 강화.
     """
 
     episode_length_s: float = 15.0
@@ -15,21 +14,20 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     action_scale: float = 0.35
 
-    # --- 느린 전진 명령 (Stage1.5에서 점진적 전환) ---
-    cmd_lin_vel_x_range: tuple = (0.0, 0.3)   # 0~0.3 m/s 천천히
-    cmd_lin_vel_y_range: tuple = (-0.1, 0.1)  # 좌우 소량
-    cmd_ang_vel_z_range: tuple = (-0.3, 0.3)  # 약간의 yaw
-    zero_command_prob: float = 0.2            # 20%는 제자리(Stage1.5 기술 보존)
+    # --- 전진 명령 범위 확대 ---
+    cmd_lin_vel_x_range: tuple = (0.0, 0.5)   # 최대 0.5 m/s로 확대
+    cmd_lin_vel_y_range: tuple = (-0.15, 0.15)
+    cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
+    zero_command_prob: float = 0.15           # 15%만 제자리
 
-    # cmd=0이어도 gait/발 들기 보상 항상 활성화 유지
     gait_reward_always_on: bool = True
 
     gait_freq_hz: float = 1.2
 
-    # --- 속도 보상 (gait보다 약하게 — 이전 실패 원인: 속도가 gait를 압도) ---
-    rew_scale_lin_vel: float = 3.0      # gait=15 대비 1/5 수준
-    rew_scale_ang_vel: float = 0.5
-    rew_scale_movement: float = 1.5     # 방향 보너스 소량
+    # --- 속도 보상 강화 (gait=15 대비 40% 수준 — 이전 실패 방지) ---
+    rew_scale_lin_vel: float = 6.0      # 3.0→6.0: 속도 추적 강화
+    rew_scale_ang_vel: float = 0.8
+    rew_scale_movement: float = 2.5     # 1.5→2.5: 방향 보너스 강화
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_heading: float = 0.0
     rew_scale_pos_drift: float = 0.0

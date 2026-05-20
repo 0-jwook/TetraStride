@@ -227,6 +227,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
         foot_forces_z = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
         contact_actual = (foot_forces_z.abs() > 1.0).float()
         cmd_has_vel_gate = (torch.norm(self._commands[:, :2], dim=1) > 0.1).float()
+        # Stage1.5 제자리 발 들기 모드: cmd=0이어도 gait/발 들기 보상 항상 활성화
+        gait_gate = torch.ones_like(cmd_has_vel_gate) if self.cfg.gait_reward_always_on else cmd_has_vel_gate
 
         # ── Isaac Lab GaitReward (Spot 공식 구현 포팅) ──────────────────────────
         # current_air_time: 현재 공중에 있는 누적 시간 (접지 시 0으로 리셋)
@@ -255,7 +257,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _sync_score = _sync(0, 3) * _sync(1, 2)                        # FL=RR, FR=RL
         _async_score = (_async(0, 1) * _async(3, 2)                     # FL≠FR, RR≠RL
                         * _async(0, 2) * _async(1, 3))                  # FL≠RL, FR≠RR
-        rew_gait = _sync_score * _async_score * self.cfg.rew_scale_gait * cmd_has_vel_gate
+        rew_gait = _sync_score * _async_score * self.cfg.rew_scale_gait * gait_gate
 
         # 보조: 기존 대각선 contact 보상 (GaitReward의 보완재)
         fl = contact_actual[:, 0]
@@ -266,12 +268,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         pair_b_active = (cos_phase >= 0).float()
         fl_rr_pair = pair_a_active * fl * rr + pair_b_active * (1 - fl) * (1 - rr)
         fr_rl_pair = pair_b_active * fr * rl + pair_a_active * (1 - fr) * (1 - rl)
-        rew_diagonal_contact = (fl_rr_pair + fr_rl_pair) * self.cfg.rew_scale_diagonal_contact * cmd_has_vel_gate
+        rew_diagonal_contact = (fl_rr_pair + fr_rl_pair) * self.cfg.rew_scale_diagonal_contact * gait_gate
 
         # Swing contact penalty (walk-these-ways 방식): swing 중 발이 닿으면 페널티
         # — 진동으로 air_time 채우는 reward hacking 직접 차단
         swing_contact_err = (contact_actual * swing_mask).sum(dim=1)
-        rew_swing_contact = swing_contact_err * self.cfg.rew_scale_swing_contact * cmd_has_vel_gate
+        rew_swing_contact = swing_contact_err * self.cfg.rew_scale_swing_contact * gait_gate
 
         # Foot height reward: toe tip clearance during swing (Solo12: 6cm target)
         # toe tip = knee_pos + R_calf @ [0, 0, -0.130] (calf local z → world)
@@ -284,11 +286,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
                       + _calf_z_world[:, :, 2] * (-0.130))
         # 연속 보상: 0cm부터 최대 10cm까지 선형 (데드존 제거 — 작은 들기에도 그라디언트 유지)
         foot_clearance = foot_tip_z.clamp(min=0.0, max=0.10)
-        rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * cmd_has_vel_gate
+        rew_foot_height = (foot_clearance * swing_mask).sum(dim=1) * self.cfg.rew_scale_foot_height * gait_gate
 
         # foot_tip_z 기반 clearance penalty (v33) — foot_tip_z가 이 로봇에서 ≈0으로 불안정하여 비활성
         clearance_deficit = (0.04 - foot_tip_z.clamp(min=-0.02)).clamp(min=0.0) * swing_mask
-        rew_foot_clearance_penalty = clearance_deficit.sum(dim=1) * self.cfg.rew_scale_foot_clearance_penalty * cmd_has_vel_gate
+        rew_foot_clearance_penalty = clearance_deficit.sum(dim=1) * self.cfg.rew_scale_foot_clearance_penalty * gait_gate
 
         # Knee angle penalty: knee too-straight → shin/knee walking root cause
         # URDF "foot" joint = knee. Default -0.83 rad. Penalize if > -0.3 rad (too extended)
@@ -304,45 +306,45 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         # v34: knee_z 기반 swing 발 들기 (v35에서 약화, 보조 역할)
         knee_swing_reward = (knee_z - 0.09).clamp(min=0.0, max=0.05) * swing_mask
-        rew_knee_swing = knee_swing_reward.sum(dim=1) * self.cfg.rew_scale_knee_swing * cmd_has_vel_gate
+        rew_knee_swing = knee_swing_reward.sum(dim=1) * self.cfg.rew_scale_knee_swing * gait_gate
         knee_swing_deficit = (0.09 - knee_z).clamp(min=0.0, max=0.03) * swing_mask
-        rew_knee_swing_penalty = knee_swing_deficit.sum(dim=1) * self.cfg.rew_scale_knee_swing_penalty * cmd_has_vel_gate
+        rew_knee_swing_penalty = knee_swing_deficit.sum(dim=1) * self.cfg.rew_scale_knee_swing_penalty * gait_gate
 
         # v35/v36: 관절각 기반 발 들기 직접 강제 ──────────────────────────────────
         # 무릎(foot joint) 굴곡 강제: default=-0.83rad, cfg 목표각 이하로 굽혀야
         leg_angle = self.joint_pos[:, self._leg_ids]  # [N, 4]
         knee_bend_deficit = (knee_angle - self.cfg.swing_knee_target).clamp(min=0.0, max=0.6) * swing_mask
-        rew_knee_bend_swing = -knee_bend_deficit.sum(dim=1) * self.cfg.rew_scale_knee_bend_swing * cmd_has_vel_gate
+        rew_knee_bend_swing = -knee_bend_deficit.sum(dim=1) * self.cfg.rew_scale_knee_bend_swing * gait_gate
 
         # 허벅지(leg joint) 들기 강제: 목표각 ±양방향 패널티 (v38: 초과 들기도 패널티)
         leg_flex_error = (leg_angle - self.cfg.swing_leg_target).abs().clamp(max=0.5) * swing_mask
-        rew_leg_flex_swing = -leg_flex_error.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * cmd_has_vel_gate
+        rew_leg_flex_swing = -leg_flex_error.sum(dim=1) * self.cfg.rew_scale_leg_flex_swing * gait_gate
 
         # Swing 중 허벅지 최솟값 강제 (v42)
         leg_min_deficit = (self.cfg.min_leg_angle - leg_angle).clamp(min=0.0, max=0.3) * swing_mask
-        rew_leg_angle_min = -leg_min_deficit.sum(dim=1) * self.cfg.rew_scale_leg_angle_min * cmd_has_vel_gate
+        rew_leg_angle_min = -leg_min_deficit.sum(dim=1) * self.cfg.rew_scale_leg_angle_min * gait_gate
 
         # Swing 중 무릎 최솟값 강제 (v43): swing 중 무릎이 최소 min_knee_angle 이상 굽혀져야
         knee_min_deficit = (knee_angle - self.cfg.min_knee_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
-        rew_swing_min_knee = -knee_min_deficit.sum(dim=1) * self.cfg.rew_scale_swing_min_knee * cmd_has_vel_gate
+        rew_swing_min_knee = -knee_min_deficit.sum(dim=1) * self.cfg.rew_scale_swing_min_knee * gait_gate
 
         # Swing 중 허벅지 최댓값 강제 (v46): swing 중 leg_angle이 max_leg_angle_swing 이하여야 (수직 들기 강제)
         # positive leg_angle = 뒤로 → 이 값 이상이면 패널티 → hip flexion(앞으로) 유도
         leg_max_excess = (leg_angle - self.cfg.max_leg_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
-        rew_swing_max_leg = -leg_max_excess.sum(dim=1) * self.cfg.rew_scale_swing_max_leg * cmd_has_vel_gate
+        rew_swing_max_leg = -leg_max_excess.sum(dim=1) * self.cfg.rew_scale_swing_max_leg * gait_gate
 
         # v51: Gaussian 타겟 보상 — clamp 패널티 대체 (gradient 단절 문제 해결)
         # hip: swing 중 leg_angle이 target에 가까울수록 보상 (항상 gradient 존재)
         hip_gauss = torch.exp(
             -(leg_angle - self.cfg.target_leg_angle_swing_gauss).pow(2) / (2 * self.cfg.sigma_leg_swing ** 2)
         ) * swing_mask  # [N, 4]
-        rew_hip_swing_gauss = hip_gauss.sum(dim=1) * self.cfg.rew_scale_hip_swing_gauss * cmd_has_vel_gate
+        rew_hip_swing_gauss = hip_gauss.sum(dim=1) * self.cfg.rew_scale_hip_swing_gauss * gait_gate
 
         # knee: swing 중 knee_angle이 target에 가까울수록 보상 (전갈 자세 동시 방지)
         knee_gauss = torch.exp(
             -(knee_angle - self.cfg.target_knee_angle_swing_gauss).pow(2) / (2 * self.cfg.sigma_knee_swing ** 2)
         ) * swing_mask  # [N, 4]
-        rew_knee_swing_gauss = knee_gauss.sum(dim=1) * self.cfg.rew_scale_knee_swing_gauss * cmd_has_vel_gate
+        rew_knee_swing_gauss = knee_gauss.sum(dim=1) * self.cfg.rew_scale_knee_swing_gauss * gait_gate
 
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
@@ -375,7 +377,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         # — 발 대신 무릎에 체중 싣는 knee-walking 직접 억제
         foot_forces_z_abs = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2].abs()
         stance_load = (foot_forces_z_abs * contact_target).sum(dim=1)  # [N]
-        rew_foot_stance = stance_load.clamp(max=15.0) / 15.0 * self.cfg.rew_scale_foot_stance * cmd_has_vel_gate
+        rew_foot_stance = stance_load.clamp(max=15.0) / 15.0 * self.cfg.rew_scale_foot_stance * gait_gate
 
         # 어깨 관절 패널티: dead zone 0.05 rad으로 좁혀 도마뱀 자세 방지
         shoulder_dev = torch.abs(
@@ -418,7 +420,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         rew_diagonal_symmetry = (
             torch.sum(torch.square(fl_tc - rr_tc), dim=1)
             + torch.sum(torch.square(fr_tc - rl_tc), dim=1)
-        ) * self.cfg.rew_scale_diagonal_symmetry * cmd_has_vel_gate
+        ) * self.cfg.rew_scale_diagonal_symmetry * gait_gate
 
         # CoT Energy reward (ICRA 2025): exp(-Σ|τ||q̇| / (|vx|×1000 + ε))
         # 수동으로 끌리는 발 = 에너지 낭비 → CoT 높아짐 → 보상 감소
@@ -431,7 +433,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         # 수동 다리 = stance 중 몸통이 앞으로 가면서 발이 상대적으로 뒤로 움직임 → 발 vel ≠ 0
         foot_vel_xy = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
         foot_vel_mag2 = torch.sum(foot_vel_xy ** 2, dim=-1)  # [N, 4]
-        rew_stance_vel = (contact_target * foot_vel_mag2).sum(dim=1) * self.cfg.rew_scale_stance_vel * cmd_has_vel_gate
+        rew_stance_vel = (contact_target * foot_vel_mag2).sum(dim=1) * self.cfg.rew_scale_stance_vel * gait_gate
 
         # DOF acceleration penalty: penalize motor vibration (Rudin 2021)
         dof_acc = (self.joint_vel - self._last_joint_vel) / self.step_dt

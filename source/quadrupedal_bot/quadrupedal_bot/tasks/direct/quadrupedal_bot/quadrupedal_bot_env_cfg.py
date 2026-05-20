@@ -128,6 +128,11 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     sigma_knee_swing: float = 0.2               # Gaussian 폭
     rew_scale_knee_swing_gauss: float = 0.0     # swing knee Gaussian 보상 (v51)
 
+    # --- Stage1.5: 제자리 발 들기 모드 ---
+    # True이면 gait/air_time/foot_height/swing 보상을 cmd_has_vel_gate 없이 항상 적용
+    # cmd=0인 제자리 학습에서 발 들기 보상을 활성화하기 위해 필요
+    gait_reward_always_on: bool = False
+
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)
     max_push_vel: float = 0.5              # m/s 최대 푸시 속도

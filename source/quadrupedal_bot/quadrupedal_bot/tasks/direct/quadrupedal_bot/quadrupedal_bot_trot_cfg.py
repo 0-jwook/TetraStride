@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v49: max_leg 0.5/scale8 (완만한 제약) + v45 보상 유지 + v41 전이."""
+    """Stage 2 v50: max_leg 0.2/scale3 + v45 베이스 (0.39에서 더 아래로 유도)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -77,8 +77,8 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_leg_angle_min: float = 0.0      # 비활성화
     min_knee_angle_swing: float = -1.2        # v45 유지
     rew_scale_swing_min_knee: float = 20.0
-    max_leg_angle_swing: float = 0.5          # v41 0.9→0.5: 완만한 hip flexion 유도
-    rew_scale_swing_max_leg: float = 8.0      # scale 8: 안정성 유지하며 점진적 압력
+    max_leg_angle_swing: float = 0.2          # v45 0.39에서 더 아래로 유도
+    rew_scale_swing_max_leg: float = 3.0      # 최소한의 압력 (안정성 우선)
     rew_scale_foot_spread: float = -25.0      # 도마뱀 자세 방지
     rew_scale_foot_slip: float = -1.5
 

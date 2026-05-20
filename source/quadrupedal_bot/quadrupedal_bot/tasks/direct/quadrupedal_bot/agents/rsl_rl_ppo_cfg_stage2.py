@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v49: max_leg 0.5/scale8 (완만한 제약) + v45 보상 + v41 전이."""
+    """Stage 2 — v50: max_leg 0.2/scale3 + v45 베이스 전이 (0.39→0.2 유도)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_02-04-15"   # v41: 안정 베이스 (v45 출발점)
+    load_run = "2026-05-20_09-18-06"   # v45: leg_angle 0.39, 0% term (최적 출발점)
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

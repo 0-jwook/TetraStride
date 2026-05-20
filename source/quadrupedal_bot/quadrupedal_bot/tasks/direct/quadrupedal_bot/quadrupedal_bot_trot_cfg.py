@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v46: swing max_leg_angle 0.15 + 무릎 -1.5 + v45 전이 (수직 들기 강제)."""
+    """Stage 2 v47: swing max_leg 0.30 + 무릎 -1.4 + v45 전이 (점진적 수직 들기)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -75,10 +75,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_default: float = -5.0      # 어깨 abduction 방지
     min_leg_angle: float = 0.3                # backward extreme만 차단 (scale=0이라 비활성)
     rew_scale_leg_angle_min: float = 0.0      # 비활성화
-    min_knee_angle_swing: float = -1.5        # -1.2→-1.5: 무릎 더 깊이 굽히기 (발 높이 확보)
+    min_knee_angle_swing: float = -1.4        # -1.37 달성값에서 소폭 강화 (안정성 우선)
     rew_scale_swing_min_knee: float = 20.0
-    max_leg_angle_swing: float = 0.15         # swing 중 허벅지 최댓값 (수직 들기 강제)
-    rew_scale_swing_max_leg: float = 25.0     # 위반 시 패널티
+    max_leg_angle_swing: float = 0.30         # v45 0.39→0.30: 점진적 hip flexion 강제
+    rew_scale_swing_max_leg: float = 12.0     # 25→12: 과도한 그래디언트 방지
     rew_scale_foot_spread: float = -25.0      # 도마뱀 자세 방지
     rew_scale_foot_slip: float = -1.5
 

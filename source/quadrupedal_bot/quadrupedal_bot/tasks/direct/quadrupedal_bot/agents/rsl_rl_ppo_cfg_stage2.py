@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v46: swing max_leg 0.15 + 무릎 -1.5 + v45 전이 (수직 들기 강제)."""
+    """Stage 2 — v47: swing max_leg 0.30 + 무릎 -1.4 + v45 전이 (점진적 수직 들기)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

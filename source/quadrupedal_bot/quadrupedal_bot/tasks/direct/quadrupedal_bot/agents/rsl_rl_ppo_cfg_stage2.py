@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_09-18-06"   # v45: leg_angle 0.39, knee -1.37, vel 0.54m/s
+    load_run = "2026-05-20_05-27-13"   # v43: 0% term, 0.475m/s, knee -1.389 (안정 베이스)
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

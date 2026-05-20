@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v51: Gaussian hip/knee 타겟 보상 (clamp 패널티 완전 대체, v45 전이)."""
+    """Stage 2 — v52: Gaussian target 0.2→0.1 커리큘럼 (v51 전이, leg_angle 0.31→0.1 유도)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_09-18-06"   # v45: leg_angle 0.39, 0% term (최적 출발점)
+    load_run = "2026-05-20_17-12-50"   # v51: leg_angle 0.31, 0% term
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

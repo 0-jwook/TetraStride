@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v51: Gaussian hip/knee 타겟 보상 (clamp 패널티 완전 대체, v45 전이)."""
+    """Stage 2 v52: Gaussian target 0.2→0.1 커리큘럼 (v51 전이, leg_angle 0.31→0.1 유도)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -81,9 +81,9 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_swing_max_leg: float = 0.0      # 비활성화 — clamp 패러독스 방지
 
     # --- v51: Gaussian 타겟 보상 ---
-    target_leg_angle_swing_gauss: float = 0.2  # 목표: v45(0.39)에서 점진 하향
+    target_leg_angle_swing_gauss: float = 0.1  # 0.2→0.1: v51(0.31) 달성 후 다음 커리큘럼
     sigma_leg_swing: float = 0.15
-    rew_scale_hip_swing_gauss: float = 2.0     # 보상 규모: velocity(12)의 1/6 — 완만한 유도
+    rew_scale_hip_swing_gauss: float = 2.0
     target_knee_angle_swing_gauss: float = -1.0
     sigma_knee_swing: float = 0.2
     rew_scale_knee_swing_gauss: float = 1.0

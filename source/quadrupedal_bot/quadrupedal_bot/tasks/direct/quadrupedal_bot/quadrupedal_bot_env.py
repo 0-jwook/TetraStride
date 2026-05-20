@@ -326,6 +326,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
         knee_min_deficit = (knee_angle - self.cfg.min_knee_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
         rew_swing_min_knee = -knee_min_deficit.sum(dim=1) * self.cfg.rew_scale_swing_min_knee * cmd_has_vel_gate
 
+        # Swing 중 허벅지 최댓값 강제 (v46): swing 중 leg_angle이 max_leg_angle_swing 이하여야 (수직 들기 강제)
+        # positive leg_angle = 뒤로 → 이 값 이상이면 패널티 → hip flexion(앞으로) 유도
+        leg_max_excess = (leg_angle - self.cfg.max_leg_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
+        rew_swing_max_leg = -leg_max_excess.sum(dim=1) * self.cfg.rew_scale_swing_max_leg * cmd_has_vel_gate
+
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
         rew_air_time_var = -air_time_var * self.cfg.rew_scale_air_time_var
@@ -523,6 +528,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/leg_flex_swing": rew_leg_flex_swing.mean().item(),
                 "rew/leg_angle_min": rew_leg_angle_min.mean().item(),
                 "rew/swing_min_knee": rew_swing_min_knee.mean().item(),
+                "rew/swing_max_leg": rew_swing_max_leg.mean().item(),
                 "diag/knee_angle_swing": (knee_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_swing": (leg_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_mean": leg_angle.mean().item(),
@@ -539,7 +545,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_diagonal_contact + rew_stance_vel + rew_foot_clearance_penalty
                 + rew_knee_swing + rew_knee_swing_penalty
                 + rew_knee_bend_swing + rew_leg_flex_swing
-                + rew_leg_angle_min + rew_swing_min_knee)
+                + rew_leg_angle_min + rew_swing_min_knee
+                + rew_swing_max_leg)
 
     # ------------------------------------------------------------------
     # Done / Termination

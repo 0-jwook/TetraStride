@@ -115,6 +115,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_leg_angle_min: float = 0.0        # swing 허벅지 최솟값 패널티 (v42)
     min_knee_angle_swing: float = -0.83         # swing 중 무릎 최솟값 (이 이상이면 패널티 — v43)
     rew_scale_swing_min_knee: float = 0.0       # swing 무릎 최솟값 패널티 (v43)
+    max_leg_angle_swing: float = 1.0            # swing 중 허벅지 최댓값 (이 이상이면 패널티 — v46, 수직 들기 강제)
+    rew_scale_swing_max_leg: float = 0.0        # swing 허벅지 최댓값 패널티 (v46)
 
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)

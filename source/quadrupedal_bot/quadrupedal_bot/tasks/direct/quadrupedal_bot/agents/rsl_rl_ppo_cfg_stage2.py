@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v45: min_leg_angle 제거 + 어깨 고정 강화 + v41 전이."""
+    """Stage 2 — v46: swing max_leg 0.15 + 무릎 -1.5 + v45 전이 (수직 들기 강제)."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-20_02-04-15"   # v41: stable base, leg_angle_swing ~0.900
+    load_run = "2026-05-20_09-18-06"   # v45: leg_angle 0.39, knee -1.37, vel 0.54m/s
     load_checkpoint = "model_4999.pt"
     load_experiment_name = "spot_micro_trot"
 

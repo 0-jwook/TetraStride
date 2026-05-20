@@ -331,6 +331,19 @@ class QuadrupedalBotEnv(DirectRLEnv):
         leg_max_excess = (leg_angle - self.cfg.max_leg_angle_swing).clamp(min=0.0, max=0.3) * swing_mask
         rew_swing_max_leg = -leg_max_excess.sum(dim=1) * self.cfg.rew_scale_swing_max_leg * cmd_has_vel_gate
 
+        # v51: Gaussian 타겟 보상 — clamp 패널티 대체 (gradient 단절 문제 해결)
+        # hip: swing 중 leg_angle이 target에 가까울수록 보상 (항상 gradient 존재)
+        hip_gauss = torch.exp(
+            -(leg_angle - self.cfg.target_leg_angle_swing_gauss).pow(2) / (2 * self.cfg.sigma_leg_swing ** 2)
+        ) * swing_mask  # [N, 4]
+        rew_hip_swing_gauss = hip_gauss.sum(dim=1) * self.cfg.rew_scale_hip_swing_gauss * cmd_has_vel_gate
+
+        # knee: swing 중 knee_angle이 target에 가까울수록 보상 (전갈 자세 동시 방지)
+        knee_gauss = torch.exp(
+            -(knee_angle - self.cfg.target_knee_angle_swing_gauss).pow(2) / (2 * self.cfg.sigma_knee_swing ** 2)
+        ) * swing_mask  # [N, 4]
+        rew_knee_swing_gauss = knee_gauss.sum(dim=1) * self.cfg.rew_scale_knee_swing_gauss * cmd_has_vel_gate
+
         # air_time_variance 패널티: 4발 air_time 불균형 시 패널티 → 한 다리만 움직이는 비대칭 차단
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
         rew_air_time_var = -air_time_var * self.cfg.rew_scale_air_time_var
@@ -529,6 +542,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/leg_angle_min": rew_leg_angle_min.mean().item(),
                 "rew/swing_min_knee": rew_swing_min_knee.mean().item(),
                 "rew/swing_max_leg": rew_swing_max_leg.mean().item(),
+                "rew/hip_swing_gauss": rew_hip_swing_gauss.mean().item(),
+                "rew/knee_swing_gauss": rew_knee_swing_gauss.mean().item(),
                 "diag/knee_angle_swing": (knee_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_swing": (leg_angle * swing_mask).sum(dim=1).mean().item() / (swing_mask.sum(dim=1).mean() + 1e-6),
                 "diag/leg_angle_mean": leg_angle.mean().item(),
@@ -546,7 +561,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 + rew_knee_swing + rew_knee_swing_penalty
                 + rew_knee_bend_swing + rew_leg_flex_swing
                 + rew_leg_angle_min + rew_swing_min_knee
-                + rew_swing_max_leg)
+                + rew_swing_max_leg
+                + rew_hip_swing_gauss + rew_knee_swing_gauss)
 
     # ------------------------------------------------------------------
     # Done / Termination

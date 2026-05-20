@@ -118,6 +118,16 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     max_leg_angle_swing: float = 1.0            # swing 중 허벅지 최댓값 (이 이상이면 패널티 — v46, 수직 들기 강제)
     rew_scale_swing_max_leg: float = 0.0        # swing 허벅지 최댓값 패널티 (v46)
 
+    # --- v51: Gaussian 타겟 보상 (clamp 패널티 대체) ---
+    # hip: swing 중 leg_angle을 target으로 유도. gradient가 항상 존재 (clamp 패러독스 해결)
+    target_leg_angle_swing_gauss: float = 0.2   # swing 중 leg_angle 목표 (0.2 → 점진 하향)
+    sigma_leg_swing: float = 0.15               # Gaussian 폭
+    rew_scale_hip_swing_gauss: float = 0.0      # swing hip Gaussian 보상 (v51)
+    # knee: swing 중 knee_angle을 target으로 유도 (전갈 자세 방지와 동시 해결)
+    target_knee_angle_swing_gauss: float = -1.0 # swing 중 knee_angle 목표
+    sigma_knee_swing: float = 0.2               # Gaussian 폭
+    rew_scale_knee_swing_gauss: float = 0.0     # swing knee Gaussian 보상 (v51)
+
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)
     max_push_vel: float = 0.5              # m/s 최대 푸시 속도

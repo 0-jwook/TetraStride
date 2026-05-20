@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage 2 — v50: max_leg 0.2/scale3 + v45 베이스 전이 (0.39→0.2 유도)."""
+    """Stage 2 — v51: Gaussian hip/knee 타겟 보상 (clamp 패널티 완전 대체, v45 전이)."""
 
     num_steps_per_env = 24
     max_iterations = 5000

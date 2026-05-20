@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage 2 v50: max_leg 0.2/scale3 + v45 베이스 (0.39에서 더 아래로 유도)."""
+    """Stage 2 v51: Gaussian hip/knee 타겟 보상 (clamp 패널티 완전 대체, v45 전이)."""
 
     episode_length_s: float = 20.0
     target_body_height: float = 0.17
@@ -75,10 +75,18 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_joint_default: float = -5.0      # 어깨 abduction 방지
     min_leg_angle: float = 0.3                # backward extreme만 차단 (scale=0이라 비활성)
     rew_scale_leg_angle_min: float = 0.0      # 비활성화
-    min_knee_angle_swing: float = -1.2        # v45 유지
+    min_knee_angle_swing: float = -1.2        # v45 유지 (clamp 방식이지만 무릎 최솟값 보조)
     rew_scale_swing_min_knee: float = 20.0
-    max_leg_angle_swing: float = 0.2          # v45 0.39에서 더 아래로 유도
-    rew_scale_swing_max_leg: float = 3.0      # 최소한의 압력 (안정성 우선)
+    max_leg_angle_swing: float = 1.0          # 비활성화 (Gaussian으로 대체)
+    rew_scale_swing_max_leg: float = 0.0      # 비활성화 — clamp 패러독스 방지
+
+    # --- v51: Gaussian 타겟 보상 ---
+    target_leg_angle_swing_gauss: float = 0.2  # 목표: v45(0.39)에서 점진 하향
+    sigma_leg_swing: float = 0.15
+    rew_scale_hip_swing_gauss: float = 2.0     # 보상 규모: velocity(12)의 1/6 — 완만한 유도
+    target_knee_angle_swing_gauss: float = -1.0
+    sigma_knee_swing: float = 0.2
+    rew_scale_knee_swing_gauss: float = 1.0
     rew_scale_foot_spread: float = -25.0      # 도마뱀 자세 방지
     rew_scale_foot_slip: float = -1.5
 

@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage3: Stage2(0.18m/s, gait=14.2) 전이 → 빠른 전진 보행."""
+    """Stage3b: Stage3(0.21m/s) 전이 → 최소 cmd 0.15 강제, gait_freq 1.4Hz."""
 
     num_steps_per_env = 24
     max_iterations = 5000
@@ -13,7 +13,7 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot"
 
     resume = True
-    load_run = "2026-05-21_00-43-57"   # Stage2: 0.18m/s, gait=14.2, term=0.01%
+    load_run = "2026-05-21_01-25-47"   # Stage3: 0.21m/s, gait=13.4, term=0.01%
     load_checkpoint = "model_2000.pt"
     load_experiment_name = "spot_micro_trot"
 

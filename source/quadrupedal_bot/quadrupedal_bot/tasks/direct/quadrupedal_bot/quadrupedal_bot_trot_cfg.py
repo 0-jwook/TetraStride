@@ -5,8 +5,8 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
-    """Stage3: Stage2(0.18m/s) 전이 → 빠른 전진 보행(최대 0.5m/s).
-    gait=14.2 유지하며 속도 목표 높임. gait보상 그대로, 속도보상 강화.
+    """Stage3b: Stage3(0.21m/s) 전이 → 최소 cmd 0.15로 속도 압박.
+    정체 원인: cmd 0~0.5에서 낮은 cmd만 선택. 최소값 강제로 0.25~0.35m/s 유도.
     """
 
     episode_length_s: float = 15.0
@@ -14,20 +14,20 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
 
     action_scale: float = 0.35
 
-    # --- 전진 명령 범위 확대 ---
-    cmd_lin_vel_x_range: tuple = (0.0, 0.5)   # 최대 0.5 m/s로 확대
+    # --- 최소 전진 속도 강제 (정체 탈출) ---
+    cmd_lin_vel_x_range: tuple = (0.15, 0.4)  # 최소 0.15 m/s 강제
     cmd_lin_vel_y_range: tuple = (-0.15, 0.15)
     cmd_ang_vel_z_range: tuple = (-0.5, 0.5)
-    zero_command_prob: float = 0.15           # 15%만 제자리
+    zero_command_prob: float = 0.1            # 10%만 제자리
 
     gait_reward_always_on: bool = True
 
-    gait_freq_hz: float = 1.2
+    gait_freq_hz: float = 1.4              # 1.2→1.4Hz: 빠른 걸음 유도
 
-    # --- 속도 보상 강화 (gait=15 대비 40% 수준 — 이전 실패 방지) ---
-    rew_scale_lin_vel: float = 6.0      # 3.0→6.0: 속도 추적 강화
+    # --- 속도 보상 (gait=15 대비 50% 수준) ---
+    rew_scale_lin_vel: float = 7.0      # 6.0→7.0
     rew_scale_ang_vel: float = 0.8
-    rew_scale_movement: float = 2.5     # 1.5→2.5: 방향 보너스 강화
+    rew_scale_movement: float = 2.5
     rew_scale_lin_vel_penalty: float = 0.0
     rew_scale_heading: float = 0.0
     rew_scale_pos_drift: float = 0.0

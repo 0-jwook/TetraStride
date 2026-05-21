@@ -32,9 +32,16 @@ class QuadrupedalBotWalkFwdCfg(QuadrupedalBotTrotInplaceCfg):
 
 @configclass
 class QuadrupedalBotWalkAllDirCfg(QuadrupedalBotWalkFwdCfg):
-    """Stage 4: 전방향 보행 + 제자리 회전 — Forward Walk 전이."""
+    """Stage 4: 전방향 보행 + 제자리 회전 — Forward Walk 전이.
+    Stage3에서 body_height 0.115m로 낮아지는 문제 수정:
+      - rew_scale_body_height 3.0 → 12.0 (강한 높이 유지)
+    """
 
     episode_length_s: float = 15.0
+
+    # --- 높이 강제 강화 (Stage3 크롤링 수정) ---
+    rew_scale_body_height: float = 12.0   # 3→12: gait 보상(~12)과 균형
+    target_body_height: float = 0.17
 
     # --- 전방향 명령 ---
     cmd_lin_vel_x_range: tuple = (-0.3, 0.4)   # 후진 포함

@@ -91,8 +91,8 @@ class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_walk_alldir"
 
     resume = True
-    load_run = "PLACEHOLDER"
-    load_checkpoint = "PLACEHOLDER"
+    load_run = "2026-05-22_03-29-33"
+    load_checkpoint = "model_2999.pt"
     load_experiment_name = "spot_micro_walk_fwd"
 
     policy = RslRlPpoActorCriticCfg(

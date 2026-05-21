@@ -133,6 +133,13 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # cmd=0인 제자리 학습에서 발 들기 보상을 활성화하기 위해 필요
     gait_reward_always_on: bool = False
 
+    # --- IMU orientation reward sigma ---
+    # exp(-tilt / sigma): sigma 작을수록 타이트 (0.04=5° 이상이면 급감, 0.20=20°까지 허용)
+    orientation_sigma: float = 0.04
+
+    # --- 4발 동시 접지 보상 ---
+    rew_scale_foot_contact: float = 0.0    # 4발 접지 비율 × scale (standing에서 활성화)
+
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)
     max_push_vel: float = 0.5              # m/s 최대 푸시 속도

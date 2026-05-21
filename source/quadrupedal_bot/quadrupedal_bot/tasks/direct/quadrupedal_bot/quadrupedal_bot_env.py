@@ -390,10 +390,16 @@ class QuadrupedalBotEnv(DirectRLEnv):
         all_joint_excess = (all_joint_dev - 0.05).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(all_joint_excess), dim=1) * self.cfg.rew_scale_joint_default
 
-        # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
-        # tilt = gx²+gy² (0=직립, 1=완전 넘어짐), sigma=0.04 → 10° 이상이면 보상 거의 0
+        # IMU 직립 보상: exp(-tilt / sigma), sigma=cfg.orientation_sigma
+        # sigma=0.04 → 타이트(10° 이상 급감), sigma=0.20 → 느슨(20°까지 허용)
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
-        rew_upright = torch.exp(-tilt / 0.04) * self.cfg.rew_scale_upright
+        rew_upright = torch.exp(-tilt / self.cfg.orientation_sigma) * self.cfg.rew_scale_upright
+
+        # 4발 동시 접지 비율 보상 (Standing v3)
+        foot_force_z_contact = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
+        foot_in_contact_4 = (torch.abs(foot_force_z_contact) > 1.0).float()  # [N, 4]
+        num_contacts = foot_in_contact_4.sum(dim=1)  # [N], 0~4
+        rew_foot_contact = (num_contacts / 4.0) * self.cfg.rew_scale_foot_contact
 
         # Foot spread penalty: 양방향 — 너무 모이거나 너무 벌어지는 것 모두 패널티
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
@@ -486,7 +492,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
             # termination cause breakdown
             body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()
-            body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > 0.0).float()
+            body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > -0.707).float()
             self.extras["log"] = {
                 "rew/alive": rew_alive_log.mean().item(),
                 "rew/lin_vel": rew_lin_vel_log.mean().item(),
@@ -497,6 +503,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/gravity": rew_gravity_log.mean().item(),
                 "rew/foot_slip": rew_foot_slip.mean().item(),
                 "rew/joint_default": rew_joint_default.mean().item(),
+                "rew/foot_contact": rew_foot_contact.mean().item(),
+                "diag/num_feet_contact": num_contacts.mean().item(),
                 "rew/foot_spread": rew_foot_spread.mean().item(),
                 "rew/stand_still": rew_stand_still.mean().item(),
                 "rew/dof_acc": rew_dof_acc.mean().item(),
@@ -555,7 +563,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
-                + rew_upright + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
+                + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
                 + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height
                 + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance
@@ -579,7 +587,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         body_fallen = self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height
-        body_tilted = self.robot.data.projected_gravity_b[:, 2] > 0.0
+        # 45° 이상 기울어지면 종료: cos(45°)=0.707, proj_gravity_b[z] < -0.707 = 45° 이하 직립
+        body_tilted = self.robot.data.projected_gravity_b[:, 2] > -0.707
 
         terminated = body_fallen | body_tilted
         return terminated, time_out

@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Standing v2: 전체 관절 패널티 + bouncing 수정 → 처음부터 학습."""
+    """Standing v3: soft guidance, 처음부터 학습."""
 
     num_steps_per_env = 24
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance"
+    experiment_name = "spot_micro_stance_v3"
 
     resume = False
 

@@ -40,9 +40,10 @@ class QuadrupedalBotWalkAllDirCfg(QuadrupedalBotWalkFwdCfg):
 
     episode_length_s: float = 15.0
 
-    # --- 높이 강제 강화 (Stage3 크롤링 수정) ---
-    rew_scale_body_height: float = 20.0   # gait(~12)보다 강하게: local min 탈출
+    # --- 높이 강제 강화 (낮은높이 local min 탈출) ---
+    rew_scale_body_height: float = 30.0   # 강한 높이 유도: gait(~12) 압도
     target_body_height: float = 0.17
+    termination_height: float = 0.135    # 0.135m 이하 에피소드 종료 (하한선)
 
     # --- 전방향 명령 ---
     cmd_lin_vel_x_range: tuple = (-0.3, 0.4)   # 후진 포함

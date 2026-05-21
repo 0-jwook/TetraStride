@@ -398,13 +398,6 @@ class QuadrupedalBotEnv(DirectRLEnv):
         shoulder_excess = (shoulder_dev - 0.05).clamp(min=0.0)
         rew_shoulder_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_shoulder_default
 
-        # 좌/우 발 각각 Y span 패널티: FL(0)+RL(2) 쌍, FR(1)+RR(3) 쌍
-        # 같은 쪽 발끼리 Y 위치가 달라지면 → 한쪽 다리가 중앙으로 모이는 tripod 신호
-        foot_y = foot_pos_world[:, :, 1]  # [N, 4] — foot_pos_world는 위에서 이미 계산됨
-        left_span = torch.abs(foot_y[:, 0] - foot_y[:, 2])   # FL - RL Y 차이
-        right_span = torch.abs(foot_y[:, 1] - foot_y[:, 3])  # FR - RR Y 차이
-        rew_foot_side_span = (left_span + right_span) * self.cfg.rew_scale_foot_side_span
-
         # IMU 직립 보상: exp(-tilt / sigma), sigma=cfg.orientation_sigma
         # sigma=0.04 → 타이트(10° 이상 급감), sigma=0.20 → 느슨(20°까지 허용)
         tilt = torch.sum(torch.square(self.robot.data.projected_gravity_b[:, :2]), dim=1)
@@ -422,6 +415,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         foot_span = foot_y_world.max(dim=1).values - foot_y_world.min(dim=1).values  # [N]
         span_error = torch.abs(foot_span - self.cfg.target_foot_span)  # 목표 간격에서 벗어난 정도
         rew_foot_spread = span_error * self.cfg.rew_scale_foot_spread  # [N]
+
+        # 좌/우 발 각각 Y span 패널티: FL(0)+RL(2) 쌍, FR(1)+RR(3) 쌍
+        # 같은 쪽 발끼리 Y 위치가 달라지면 → 한쪽 다리가 중앙으로 모이는 tripod 신호
+        left_span = torch.abs(foot_y_world[:, 0] - foot_y_world[:, 2])   # FL - RL Y 차이
+        right_span = torch.abs(foot_y_world[:, 1] - foot_y_world[:, 3])  # FR - RR Y 차이
+        rew_foot_side_span = (left_span + right_span) * self.cfg.rew_scale_foot_side_span
 
         # Foot slip penalty: contact foot moving laterally = sliding (Margolis 2022)
         foot_lin_vel_w = self.robot.data.body_lin_vel_w[:, self._foot_body_ids_robot, :2]  # [N, 4, 2]
@@ -508,6 +507,39 @@ class QuadrupedalBotEnv(DirectRLEnv):
             # termination cause breakdown
             body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()
             body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > -0.707).float()
+
+            # ── 시각화 없이 로봇 모양 판단용 진단 지표 ──────────────────────
+            # 몸통 롤/피치 (도 단위): 0=직립, 양수=우/전 기울어짐
+            _grav_b = self.robot.data.projected_gravity_b
+            _roll_deg  = torch.atan2(-_grav_b[:, 1], -_grav_b[:, 2]) * 57.3   # 좌우 기울기
+            _pitch_deg = torch.atan2( _grav_b[:, 0], -_grav_b[:, 2]) * 57.3   # 앞뒤 기울기
+            _tilt_deg  = torch.sqrt(_roll_deg**2 + _pitch_deg**2)              # 전체 기울기
+            # 어깨 관절 절대값 평균 (0=정렬, 0.1이상=벌어짐/모임)
+            _shoulder_abs = self.joint_pos[:, self._shoulder_ids].abs().mean(dim=1)
+            # 무릎(foot joint) 평균 각도 (-0.83=기본자세)
+            _knee_mean = self.joint_pos[:, self._knee_ids].mean(dim=1)
+            # 다리(leg joint) 평균 각도 (0.83=기본자세)
+            _leg_mean_all = self.joint_pos[:, self._leg_ids].mean(dim=1)
+            # 몸통 높이 표준편차 (낮을수록 안정적)
+            _height_std = self.robot.data.root_pos_w[:, 2].std()
+            # 발 앞뒤 거리: 앞발(FL,FR) X 평균 - 뒷발(RL,RR) X 평균 (양수=정상)
+            _foot_x = foot_pos_world[:, :, 0]
+            _foot_x_spread = (_foot_x[:, :2].mean(dim=1) - _foot_x[:, 2:].mean(dim=1)).mean()
+            # 4발 동시 접지 비율 (1.0=항상 4발 접지)
+            _stance_4_ratio = (num_contacts >= 4).float().mean()
+            # 명령 속도 평균
+            _cmd_vel_x = self._commands[:, 0].mean()
+            _cmd_vel_y = self._commands[:, 1].mean()
+            _cmd_yaw   = self._commands[:, 2].mean()
+            # 속도 추적 오차 |cmd - actual|
+            _vel_err_x = torch.abs(self._commands[:, 0] - self.robot.data.root_lin_vel_b[:, 0])
+            _vel_err_y = torch.abs(self._commands[:, 1] - self.robot.data.root_lin_vel_b[:, 1])
+            _vel_tracking_err = (_vel_err_x + _vel_err_y).mean()
+            # 발 하중 좌우 대칭 (0=완벽 대칭)
+            _foot_fz = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2].abs()
+            _load_left  = (_foot_fz[:, 0] + _foot_fz[:, 2]).mean()  # FL+RL
+            _load_right = (_foot_fz[:, 1] + _foot_fz[:, 3]).mean()  # FR+RR
+            _load_asymmetry = torch.abs(_load_left - _load_right) / (_load_left + _load_right + 1e-3)
             self.extras["log"] = {
                 "rew/alive": rew_alive_log.mean().item(),
                 "rew/lin_vel": rew_lin_vel_log.mean().item(),
@@ -533,11 +565,26 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/yaw_error": rew_ang_vel_z.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
                 "diag/body_height_min": self.robot.data.root_pos_w[:, 2].min().item(),
+                "diag/body_height_std": _height_std.item(),
                 "diag/torque_sat_ratio": torque_sat_ratio.item(),
                 "diag/term_height_ratio": body_fallen_now.mean().item(),
                 "diag/term_tilt_ratio": body_tilted_now.mean().item(),
                 "rew/termination": rew_termination_log.mean().item(),
                 "diag/per_step_net": per_step_net.mean().item(),
+                # ── 로봇 모양 진단 ──
+                "pose/roll_deg":          _roll_deg.mean().item(),
+                "pose/pitch_deg":         _pitch_deg.mean().item(),
+                "pose/tilt_deg":          _tilt_deg.mean().item(),
+                "pose/shoulder_abs_mean": _shoulder_abs.mean().item(),
+                "pose/knee_angle_mean":   _knee_mean.mean().item(),
+                "pose/leg_angle_mean":    _leg_mean_all.mean().item(),
+                "pose/foot_x_spread":     _foot_x_spread.item(),
+                "pose/stance_4_ratio":    _stance_4_ratio.item(),
+                "pose/load_asymmetry":    _load_asymmetry.item(),
+                "cmd/vel_x":              _cmd_vel_x.item(),
+                "cmd/vel_y":              _cmd_vel_y.item(),
+                "cmd/yaw":                _cmd_yaw.item(),
+                "cmd/vel_tracking_err":   _vel_tracking_err.item(),
                 "diag/term_ratio": self.reset_terminated.float().mean().item(),
                 "diag/foot_span_mean": foot_span.mean().item(),
                 "rew/gait": rew_gait.mean().item(),

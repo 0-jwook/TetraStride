@@ -5,17 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Standing v3b: tripod cheat 수정 — shoulder penalty + foot_side_span 추가."""
+    """Standing v3c: body_height exp 보상 + 자세 진단 로그 추가."""
 
     num_steps_per_env = 24
     max_iterations = 2000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v3b"
+    experiment_name = "spot_micro_stance_v3c"
 
     resume = True
-    load_run = "2026-05-21_23-51-31"
-    load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_stance_v3"
+    load_run = "2026-05-22_01-32-51"
+    load_checkpoint = "model_600.pt"
+    load_experiment_name = "spot_micro_stance_v3b"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

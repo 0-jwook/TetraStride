@@ -32,7 +32,7 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_alive: float = 1.0           # 생존이 핵심 신호
     rew_scale_upright: float = 5.0         # IMU orientation 핵심 보상
     orientation_sigma: float = 0.20        # 0.04→0.20: 20°까지 탐색 허용
-    rew_scale_body_height: float = -1.0    # soft 패널티 (clamp min=0 단방향)
+    rew_scale_body_height: float = 3.0     # exp 보상 (0.17m 중심 Gaussian, 양방향 gradient)
     rew_scale_ang_vel_xy: float = -1.0     # 롤/피치 각속도 억제
     rew_scale_lin_vel_z: float = -2.0      # 수직 이동 억제 (corrective motion 허용)
     rew_scale_termination: float = -5.0    # 완화 (탐색 허용)

@@ -383,12 +383,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
         stance_load = (foot_forces_z_abs * contact_target).sum(dim=1)  # [N]
         rew_foot_stance = stance_load.clamp(max=15.0) / 15.0 * self.cfg.rew_scale_foot_stance * gait_gate
 
-        # 어깨 관절 패널티: dead zone 0.05 rad으로 좁혀 도마뱀 자세 방지
-        shoulder_dev = torch.abs(
-            self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
+        # 전체 관절 기본자세 패널티: 어깨(abduction) + 허벅지/무릎(leg/knee) 모두 커버
+        all_joint_dev = torch.abs(
+            self.joint_pos - self.robot.data.default_joint_pos
         )
-        shoulder_excess = (shoulder_dev - 0.05).clamp(min=0.0)
-        rew_joint_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_joint_default
+        all_joint_excess = (all_joint_dev - 0.05).clamp(min=0.0)
+        rew_joint_default = torch.sum(torch.square(all_joint_excess), dim=1) * self.cfg.rew_scale_joint_default
 
         # IMU 직립 보상: 수평 유지할수록 급격히 증가, 조금만 기울어도 급감
         # tilt = gx²+gy² (0=직립, 1=완전 넘어짐), sigma=0.04 → 10° 이상이면 보상 거의 0

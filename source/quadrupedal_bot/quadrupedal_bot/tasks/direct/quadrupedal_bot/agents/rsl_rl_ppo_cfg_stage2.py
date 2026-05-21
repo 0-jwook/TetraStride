@@ -5,17 +5,14 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
-    """Stage3b: Stage3(0.21m/s) 전이 → 최소 cmd 0.15 강제, gait_freq 1.4Hz."""
+    """Standing v2: 전체 관절 패널티 + bouncing 수정 → 처음부터 학습."""
 
     num_steps_per_env = 24
-    max_iterations = 5000
+    max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_trot"
+    experiment_name = "spot_micro_stance"
 
-    resume = True
-    load_run = "2026-05-21_01-25-47"   # Stage3: 0.21m/s, gait=13.4, term=0.01%
-    load_checkpoint = "model_2000.pt"
-    load_experiment_name = "spot_micro_trot"
+    resume = False
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

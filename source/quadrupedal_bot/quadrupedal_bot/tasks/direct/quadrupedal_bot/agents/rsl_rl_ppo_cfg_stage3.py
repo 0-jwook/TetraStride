@@ -13,8 +13,8 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_trot_inplace"
 
     resume = True
-    load_run = "PLACEHOLDER"          # auto-filled by curriculum
-    load_checkpoint = "PLACEHOLDER"   # auto-filled by curriculum
+    load_run = "2026-05-22_02-02-36"
+    load_checkpoint = "model_1999.pt"
     load_experiment_name = "spot_micro_stance_v3c"
 
     policy = RslRlPpoActorCriticCfg(

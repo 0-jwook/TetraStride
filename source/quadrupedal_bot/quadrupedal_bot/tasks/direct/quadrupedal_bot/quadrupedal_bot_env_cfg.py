@@ -140,6 +140,13 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # --- 4발 동시 접지 보상 ---
     rew_scale_foot_contact: float = 0.0    # 4발 접지 비율 × scale (standing에서 활성화)
 
+    # --- 어깨 관절 전용 패널티 (tripod cheat 방지) ---
+    rew_scale_shoulder_default: float = 0.0  # shoulder abduction 전용 (leg/knee보다 강하게)
+
+    # --- 좌/우 발 각각 span 패널티 (같은 쪽 발끼리 Y 위치 일치 유도) ---
+    # FL(0)+RL(2) Y 차이, FR(1)+RR(3) Y 차이를 각각 패널티
+    rew_scale_foot_side_span: float = 0.0
+
     # --- Domain randomization (push perturbation) ---
     push_interval_s: float = 0.0           # 초 간격 랜덤 푸시 (0=비활성)
     max_push_vel: float = 0.5              # m/s 최대 푸시 속도

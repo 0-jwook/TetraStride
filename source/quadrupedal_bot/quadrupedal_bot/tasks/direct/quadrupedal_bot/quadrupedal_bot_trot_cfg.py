@@ -43,8 +43,10 @@ class QuadrupedalBotTrotCfg(QuadrupedalBotEnvCfg):
     rew_scale_foot_spread: float = -6.0    # 도마뱀 자세 방지 (약화)
     target_foot_span: float = 0.10
 
-    # --- 약한 prior만 유지 ---
-    rew_scale_joint_default: float = -0.10  # 아주 약한 prior (강제 아님)
+    # --- 약한 prior + tripod cheat 방지 ---
+    rew_scale_joint_default: float = -0.05      # 전체 관절 아주 약한 prior
+    rew_scale_shoulder_default: float = -2.0    # 어깨 전용 강한 패널티 (tripod 방지)
+    rew_scale_foot_side_span: float = -8.0      # 좌/우 발 Y span 패널티 (tripod 방지)
 
     # --- 부드러운 행동 ---
     rew_scale_action_rate: float = -0.05

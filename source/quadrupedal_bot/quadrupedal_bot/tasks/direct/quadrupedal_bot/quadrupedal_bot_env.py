@@ -383,12 +383,27 @@ class QuadrupedalBotEnv(DirectRLEnv):
         stance_load = (foot_forces_z_abs * contact_target).sum(dim=1)  # [N]
         rew_foot_stance = stance_load.clamp(max=15.0) / 15.0 * self.cfg.rew_scale_foot_stance * gait_gate
 
-        # 전체 관절 기본자세 패널티: 어깨(abduction) + 허벅지/무릎(leg/knee) 모두 커버
+        # 전체 관절 기본자세 패널티 (약한 prior)
         all_joint_dev = torch.abs(
             self.joint_pos - self.robot.data.default_joint_pos
         )
         all_joint_excess = (all_joint_dev - 0.05).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(all_joint_excess), dim=1) * self.cfg.rew_scale_joint_default
+
+        # 어깨 관절 전용 패널티: tripod cheat 방지 (발이 어깨 바로 아래 위치하도록)
+        # shoulder joint이 0에서 벗어나면 발이 옆으로 이동 → 강하게 패널티
+        shoulder_dev = torch.abs(
+            self.joint_pos[:, self._shoulder_ids] - self.robot.data.default_joint_pos[:, self._shoulder_ids]
+        )
+        shoulder_excess = (shoulder_dev - 0.05).clamp(min=0.0)
+        rew_shoulder_default = torch.sum(torch.square(shoulder_excess), dim=1) * self.cfg.rew_scale_shoulder_default
+
+        # 좌/우 발 각각 Y span 패널티: FL(0)+RL(2) 쌍, FR(1)+RR(3) 쌍
+        # 같은 쪽 발끼리 Y 위치가 달라지면 → 한쪽 다리가 중앙으로 모이는 tripod 신호
+        foot_y = foot_pos_world[:, :, 1]  # [N, 4] — foot_pos_world는 위에서 이미 계산됨
+        left_span = torch.abs(foot_y[:, 0] - foot_y[:, 2])   # FL - RL Y 차이
+        right_span = torch.abs(foot_y[:, 1] - foot_y[:, 3])  # FR - RR Y 차이
+        rew_foot_side_span = (left_span + right_span) * self.cfg.rew_scale_foot_side_span
 
         # IMU 직립 보상: exp(-tilt / sigma), sigma=cfg.orientation_sigma
         # sigma=0.04 → 타이트(10° 이상 급감), sigma=0.20 → 느슨(20°까지 허용)
@@ -505,6 +520,10 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/joint_default": rew_joint_default.mean().item(),
                 "rew/foot_contact": rew_foot_contact.mean().item(),
                 "diag/num_feet_contact": num_contacts.mean().item(),
+                "rew/shoulder_default": rew_shoulder_default.mean().item(),
+                "rew/foot_side_span": rew_foot_side_span.mean().item(),
+                "diag/left_span": left_span.mean().item(),
+                "diag/right_span": right_span.mean().item(),
                 "rew/foot_spread": rew_foot_spread.mean().item(),
                 "rew/stand_still": rew_stand_still.mean().item(),
                 "rew/dof_acc": rew_dof_acc.mean().item(),
@@ -563,6 +582,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
             }
 
         return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
+                + rew_shoulder_default + rew_foot_side_span
                 + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
                 + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height

@@ -34,13 +34,14 @@ class QuadrupedalBotWalkFwdCfg(QuadrupedalBotTrotInplaceCfg):
 class QuadrupedalBotWalkAllDirCfg(QuadrupedalBotWalkFwdCfg):
     """Stage 4: 전방향 보행 + 제자리 회전 — Forward Walk 전이.
     Stage3에서 body_height 0.115m로 낮아지는 문제 수정:
-      - rew_scale_body_height 3.0 → 12.0 (강한 높이 유지)
+      - rew_scale_body_height 20.0 (gait ~12보다 강하게 하여 local min 탈출)
+      - rew_scale_gait 12.0 (높이 유지와 균형)
     """
 
     episode_length_s: float = 15.0
 
     # --- 높이 강제 강화 (Stage3 크롤링 수정) ---
-    rew_scale_body_height: float = 12.0   # 3→12: gait 보상(~12)과 균형
+    rew_scale_body_height: float = 20.0   # gait(~12)보다 강하게: local min 탈출
     target_body_height: float = 0.17
 
     # --- 전방향 명령 ---
@@ -53,7 +54,7 @@ class QuadrupedalBotWalkAllDirCfg(QuadrupedalBotWalkFwdCfg):
     push_interval_s: float = 8.0
     max_push_vel: float = 0.3
 
-    # --- gait 강화 ---
-    rew_scale_gait: float = 15.0
-    rew_scale_air_time: float = 15.0
+    # --- gait (높이 보상과 경쟁 줄임) ---
+    rew_scale_gait: float = 12.0
+    rew_scale_air_time: float = 10.0
     gait_freq_hz: float = 1.4

@@ -12,9 +12,11 @@ from isaaclab.assets.articulation import ArticulationCfg
 #   left  thigh/calf sim+  →  servo-  (direction=-1, sim+ = forward, servo+ = backward)
 #   right thigh/calf sim+  →  servo+  (direction=+1, sim+ = forward, servo+ = forward)
 #
-# Standing pose (body z ≈ 0.19~0.20 m, bent knee like real robot):
-#   leg = 0.83 rad (47°), foot = -0.83 rad — real robot measurement Q2=-0.83, Q3=1.66
-#   전 관절 kp=20, effort_limit=10으로 통일 — 어깨 약함이 다리 모임의 근본 원인이었음
+# Standing pose (body z ≈ 0.17 m, proper reverse-knee):
+#   leg = 0.83 rad (47°), foot = -1.55 rad — 역관절: calf 41° 앞으로, 발이 hip 직하방
+#   foot=-0.83(구): calf 수직 → 발이 hip 뒤 → CoM 앞쏠림 → 마찰 의존 불안정 자세
+#   foot=-1.55(신): body_height=0.17m, 발이 CoM 직하방 → 물리적으로 안정
+#   전 관절 kp=20, effort_limit=10으로 통일
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -44,7 +46,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,
-            ".*_foot": -0.83,
+            ".*_foot": -1.55,
         },
         joint_vel={".*": 0.0},
     ),

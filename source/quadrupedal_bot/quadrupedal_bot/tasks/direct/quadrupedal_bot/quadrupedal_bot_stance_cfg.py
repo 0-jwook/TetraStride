@@ -9,7 +9,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
 
-    termination_height: float = 0.16   # 0.12→0.16: 낮은 자세 생존 차단 (body_height=0.155m 패치)
+    termination_height: float = 0.13   # 역관절 자세 기준: 0.17m 목표에서 4cm 여유
 
     # 속도 명령 없음 — 항상 제자리
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
@@ -29,8 +29,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_air_time: float = 0.0     # 발 들기 없음
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    target_body_height: float = 0.19            # leg=0.83, kp=20: gravity_sag=0.052 rad, 실 평형점 ~0.19m
-    rew_scale_body_height: float = 2.0          # Gaussian 보상 (sigma=0.05): 목표 근처 최대 +2.0/step
+    target_body_height: float = 0.17            # leg=0.83, foot=-1.55: 역관절 자세의 실 평형점
+    rew_scale_body_height: float = 5.0          # Gaussian 보상 (sigma=0.05): 역관절 유지 강화
     rew_scale_non_foot_contact: float = 0.0   # Stage 1: 비활성화 (서기 학습에 불필요)
     rew_scale_lin_vel_xy: float = -0.3         # 제자리 유지: 수평 이동 패널티
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티

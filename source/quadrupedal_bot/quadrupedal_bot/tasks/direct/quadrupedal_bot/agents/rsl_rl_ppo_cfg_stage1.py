@@ -5,14 +5,14 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO 설정 — v30 재시작: 56dim obs(per-foot clock 포함) 처음부터."""
+    """Stage 1 (서기) PPO — foot=-1.55 역관절 + 마찰 현실화(0.8/0.6) 처음부터."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance"
+    experiment_name = "spot_micro_stance_rev"
 
-    resume = False   # 56dim obs로 네트워크 구조 변경 → 처음부터
+    resume = False   # 역관절 default_joint_pos 변경 → obs 분포 변경 → 처음부터
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,

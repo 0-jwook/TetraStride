@@ -64,8 +64,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
             prim_path="/World/ground",
             cfg=GroundPlaneCfg(
                 physics_material=RigidBodyMaterialCfg(
-                    static_friction=1.0,
-                    dynamic_friction=1.0,
+                    static_friction=0.8,
+                    dynamic_friction=0.6,
                     restitution=0.0,
                 )
             ),

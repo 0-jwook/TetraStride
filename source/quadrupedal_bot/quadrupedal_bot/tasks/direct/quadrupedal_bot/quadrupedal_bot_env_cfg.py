@@ -101,6 +101,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_stance_vel: float = 0.0   # stance 중 발 속도 패널티 (끌림 발 직접 차단)
     rew_scale_yaw_tracking: float = 0.0  # legged_gym 방식 exp(-yaw_err²/0.25) 보상 (yaw 추적 동기)
     rew_scale_pos_drift: float = 0.0     # 세계 좌표 Y축 누적 drift 패널티 (직진 명령 env만)
+    rew_scale_base_drift: float = 0.0   # X+Y 누적 위치 드리프트 패널티 (cmd gate 없음, stance 전용)
     rew_scale_heading_linear: float = 0.0  # 선형 heading 오차 패널티 (exp 포화 보완)
     rew_scale_yaw_rate_error: float = 0.0  # 선형 yaw rate 오차 패널티
     rew_scale_diagonal_contact: float = 0.0  # 대각선 쌍(FL-RR, FR-RL) 동시 contact 보상

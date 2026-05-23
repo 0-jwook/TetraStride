@@ -5,17 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
-    """Stage 2: Stationary Trot — Standing v3c 전이학습."""
+    """Stage 2: TrotInplace — kp=30 Stance 전이학습."""
 
-    num_steps_per_env = 24
+    num_steps_per_env = 32
     max_iterations = 2000
     save_interval = 200
-    experiment_name = "spot_micro_trot_inplace"
+    experiment_name = "spot_micro_trot_inplace_kp30"
 
     resume = True
-    load_run = "2026-05-22_02-02-36"
-    load_checkpoint = "model_1999.pt"
-    load_experiment_name = "spot_micro_stance_v3c"
+    load_run = "2026-05-23_03-08-59"
+    load_checkpoint = "model_2999.pt"
+    load_experiment_name = "spot_micro_stance_kp30"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -44,17 +44,17 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
-    """Stage 3: Forward Walk — Trot in-place 전이학습."""
+    """Stage 3: WalkFwd — kp=30 TrotInplace 전이학습."""
 
-    num_steps_per_env = 24
+    num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_fwd"
+    experiment_name = "spot_micro_walk_fwd_kp30"
 
     resume = True
-    load_run = "2026-05-22_02-45-19"
+    load_run = "2026-05-23_04-46-53"
     load_checkpoint = "model_1999.pt"
-    load_experiment_name = "spot_micro_trot_inplace"
+    load_experiment_name = "spot_micro_trot_inplace_kp30"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -83,17 +83,17 @@ class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
-    """Stage 4: All-direction + Rotation — Forward Walk 전이학습."""
+    """Stage 4: WalkAllDir — kp=30 WalkFwd 전이학습."""
 
-    num_steps_per_env = 24
+    num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_alldir"
+    experiment_name = "spot_micro_walk_alldir_kp30"
 
     resume = True
-    load_run = "2026-05-22_03-29-33"
+    load_run = "2026-05-23_06-01-20"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_fwd"
+    load_experiment_name = "spot_micro_walk_fwd_kp30"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -122,17 +122,17 @@ class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage6(RslRlOnPolicyRunnerCfg):
-    """Stage 5: In-place Rotation — WalkAllDir 전이학습."""
+    """Stage 5: InplaceRot — kp=30 WalkAllDir 전이학습."""
 
-    num_steps_per_env = 24
+    num_steps_per_env = 32
     max_iterations = 2000
     save_interval = 200
-    experiment_name = "spot_micro_inplace_rot"
+    experiment_name = "spot_micro_inplace_rot_kp30"
 
     resume = True
-    load_run = "2026-05-22_04-56-31"
+    load_run = "2026-05-23_07-53-55"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_alldir"
+    load_experiment_name = "spot_micro_walk_alldir_kp30"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

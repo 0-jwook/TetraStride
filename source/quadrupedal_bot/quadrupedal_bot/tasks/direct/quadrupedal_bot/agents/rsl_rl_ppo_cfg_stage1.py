@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO — kp=30 오버댐핑, 진동 제거, 처음부터 재학습."""
+    """Stage 1 (서기) PPO — anti-drift 강화, 진짜 제자리 서기 학습."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_kp30"
+    experiment_name = "spot_micro_stance_v4"
 
     resume = False
 

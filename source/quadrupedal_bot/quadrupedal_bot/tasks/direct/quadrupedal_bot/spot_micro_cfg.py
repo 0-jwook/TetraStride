@@ -16,7 +16,12 @@ from isaaclab.assets.articulation import ArticulationCfg
 #   leg = 0.83 rad (47°), foot = -1.55 rad — 역관절: calf 41° 앞으로, 발이 hip 직하방
 #   foot=-0.83(구): calf 수직 → 발이 hip 뒤 → CoM 앞쏠림 → 마찰 의존 불안정 자세
 #   foot=-1.55(신): body_height=0.17m, 발이 CoM 직하방 → 물리적으로 안정
-#   전 관절 kp=20, effort_limit=10으로 통일
+#
+# MG996R @6V (공식 TowerPro 스펙):
+#   stall_torque = 11 kgf·cm = 1.08 N·m  → effort_limit=1.1
+#   no_load_speed = 0.14 s/60° = 7.5 rad/s → velocity_limit=7.5
+#   kp=30 + effort=1.08: 포화점 2.1° → kp=10으로 낮춰 6.3°까지 선형 제어 확보
+#   overdamping: critical(kp=10, I≈0.001~0.005)=0.2~0.45 → damping=0.5으로 안전 오버댐핑
 
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
@@ -53,17 +58,17 @@ SPOT_MICRO_CFG = ArticulationCfg(
     actuators={
         "shoulder_joints": DCMotorCfg(
             joint_names_expr=[".*_shoulder"],
-            effort_limit=10.0,   # 2.0→10.0: 어깨 약해서 다리 모임 → leg/foot과 동일하게
+            effort_limit=10.0,
             saturation_effort=10.0,
-            velocity_limit=6.0,
-            stiffness=20.0,      # 15→20: leg/foot과 통일
+            velocity_limit=7.5,     # MG996R @6V: 7.5 rad/s (기존 6.0은 6rad/s 초과시 토크=0 버그)
+            stiffness=20.0,
             damping=0.5,
         ),
         "leg_joints": DCMotorCfg(
             joint_names_expr=[".*_leg"],
             effort_limit=10.0,
             saturation_effort=10.0,
-            velocity_limit=6.0,
+            velocity_limit=7.5,     # MG996R @6V: 7.5 rad/s
             stiffness=30.0,
             damping=0.8,
         ),
@@ -71,7 +76,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
             joint_names_expr=[".*_foot"],
             effort_limit=10.0,
             saturation_effort=10.0,
-            velocity_limit=6.0,
+            velocity_limit=7.5,
             stiffness=30.0,
             damping=0.8,
         ),

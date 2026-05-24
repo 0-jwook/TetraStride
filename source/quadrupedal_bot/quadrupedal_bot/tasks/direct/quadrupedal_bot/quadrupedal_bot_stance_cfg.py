@@ -39,7 +39,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_foot_spread: float = -8.0       # 다리 모임 차단
     rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티
     rew_scale_stand_still: float = -3.0        # v1 수준 복원: -5.0은 초기 joint_dev×scale=-16/step으로 value function 붕괴
-    rew_scale_base_drift: float = -20.0        # 4x 강화 (v1 -5.0 대비): 안정 서기 후 위치 유지 강제
+    rew_scale_base_drift: float = -5.0         # v1 수준 복원: -20은 ep_len=54 조기종료 유도 (수식 검증됨)
     freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거
     rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
     rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)

@@ -43,4 +43,5 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거
     rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
     rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)
+    rew_scale_foot_contact: float = 5.0     # 4발 접지 강제: 3발=+3.75, 4발=+5.0 → 500스텝 차이 625
     action_scale: float = 0.25               # kp=30, effort=10: no saturation (stance 안정)

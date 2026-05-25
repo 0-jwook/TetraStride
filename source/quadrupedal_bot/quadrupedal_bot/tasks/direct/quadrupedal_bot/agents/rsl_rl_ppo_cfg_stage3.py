@@ -15,7 +15,7 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
     resume = True
     load_run = "2026-05-23_03-08-59"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_stance_v6"
+    load_experiment_name = "spot_micro_stance_v7"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

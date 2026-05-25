@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO — anti-drift 강화, 진짜 제자리 서기 학습."""
+    """Stage 1 (서기) PPO v8 — knee_height_stance 패널티 추가: 무릎 접지 억제."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v7"
+    experiment_name = "spot_micro_stance_v8"
 
     resume = False
 

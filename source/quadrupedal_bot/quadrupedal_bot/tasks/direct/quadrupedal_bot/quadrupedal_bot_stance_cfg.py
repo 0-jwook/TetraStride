@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v13 — v12 전이학습, 앞발 미끄러짐 차단 + 높이 복원."""
+    """Stage 1: 서기 학습 v13 — v12 전이학습, 슬라이딩 차단 + 높이 복원 (lin_vel_xy 복원)."""
 
     episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
 
@@ -32,7 +32,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     target_body_height: float = 0.17            # leg=0.83, foot=-1.55: 역관절 자세의 실 평형점
     rew_scale_body_height: float = 18.0         # v13: 12→18, 높이 복원 (낮은 자세 → CoM 전방 유발)
     rew_scale_non_foot_contact: float = -2.0   # 무릎/배 바닥 닿음 강한 패널티
-    rew_scale_lin_vel_xy: float = -20.0        # v13: -50→-20, 과잉 패널티 완화 (회복 동작 허용)
+    rew_scale_lin_vel_xy: float = -50.0        # v13: -20→-50 복원, 드리프트 차단 핵심
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티
     rew_scale_upright: float = 2.0            # 직립 유지 강화
     rew_scale_foot_spread: float = -8.0       # 다리 모임 차단

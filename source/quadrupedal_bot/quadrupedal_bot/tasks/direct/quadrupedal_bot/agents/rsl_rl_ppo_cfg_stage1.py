@@ -5,7 +5,7 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v13 — v12 전이학습: 앞발 미끄러짐 차단 + 높이 복원."""
+    """Stage 1 (서기) PPO v13 — v12 전이학습: foot_slip -3.0 + body_height 18 + lin_vel_xy -50."""
 
     num_steps_per_env = 32
     max_iterations = 2000

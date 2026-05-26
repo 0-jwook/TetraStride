@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 — 강한 anti-drift 패널티, 진짜 제자리 서기 강제."""
+    """Stage 1: 서기 학습 v11 — v10 전이학습, 높이+어깨+발 위치 집중 개선."""
 
     episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
 
@@ -30,7 +30,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
     target_body_height: float = 0.17            # leg=0.83, foot=-1.55: 역관절 자세의 실 평형점
-    rew_scale_body_height: float = 5.0          # Gaussian 보상 (sigma=0.05): 역관절 유지 강화
+    rew_scale_body_height: float = 20.0         # v11: 5→20, Gaussian 보상 3배 강화: 높이 0.17m 집중 유도
     rew_scale_non_foot_contact: float = -2.0   # 무릎/배 바닥 닿음 강한 패널티
     rew_scale_lin_vel_xy: float = -10.0        # 2x 강화 (alive=0.1 비율로 44%/episode → 의미있음)
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티
@@ -47,6 +47,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_knee_height_stance: float = -200.0  # v9: scale 대폭 강화(-30→-200), 무릎 접지 완전 억제
     knee_stance_height_threshold: float = 0.06    # v9: 임계값 상향(0.04→0.06m), 더 넓은 범위 감지
     rew_scale_knee_angle: float = -2.0           # 무릎 관절 너무 펴질 때 패널티 (>-0.3 rad) — 무릎 접지 보조 억제
-    rew_scale_shoulder_default: float = -5.0  # v10: 어깨 관절 이탈 패널티 — 앞다리 중앙 수렴 차단
-    rew_scale_foot_side_span: float = -5.0    # v10: 같은쪽 앞/뒷발 Y축 정렬 패널티 — 앞다리 수렴 직접 감지
+    rew_scale_shoulder_default: float = -15.0  # v11: -5→-15, 어깨 벌어짐 강하게 억제
+    rew_scale_foot_side_span: float = -8.0    # v11: -5→-8, 앞/뒷발 Y축 정렬 강화
+    rew_scale_joint_default: float = -2.0     # v11: -0.5→-2.0, 전체 관절 기본자세 유지 강화 (발 위치 개선)
     action_scale: float = 0.25               # kp=30, effort=10: no saturation (stance 안정)

@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v12 — v11 전이학습, 전진 드리프트 차단 집중."""
+    """Stage 1: 서기 학습 v13 — v12 전이학습, 앞발 미끄러짐 차단 + 높이 복원."""
 
     episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
 
@@ -30,15 +30,15 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_movement: float = 0.0     # 이동 없음
     rew_scale_gait: float = 0.0         # 보행 패턴 없음
     target_body_height: float = 0.17            # leg=0.83, foot=-1.55: 역관절 자세의 실 평형점
-    rew_scale_body_height: float = 12.0         # v12: 20→12, 높이 달성 후 지배 보상 완화 (전진 유인 감소)
+    rew_scale_body_height: float = 18.0         # v13: 12→18, 높이 복원 (낮은 자세 → CoM 전방 유발)
     rew_scale_non_foot_contact: float = -2.0   # 무릎/배 바닥 닿음 강한 패널티
-    rew_scale_lin_vel_xy: float = -50.0        # v12: -10→-50, 전진 드리프트 직접 차단 (v_xy²×scale)
+    rew_scale_lin_vel_xy: float = -20.0        # v13: -50→-20, 과잉 패널티 완화 (회복 동작 허용)
     rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티
     rew_scale_upright: float = 2.0            # 직립 유지 강화
     rew_scale_foot_spread: float = -8.0       # 다리 모임 차단
-    rew_scale_foot_slip: float = -0.05        # 미끄러짐 패널티
+    rew_scale_foot_slip: float = -3.0         # v13: -0.05→-3.0, 앞발 미끄러짐 직접 차단 (60배)
     rew_scale_stand_still: float = 0.0         # 비활성화
-    rew_scale_base_drift: float = -15.0        # v12: -5→-15, 누적 위치 드리프트 3x 강화
+    rew_scale_base_drift: float = -15.0        # 누적 위치 드리프트 패널티 유지
     freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거
     rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
     rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)

@@ -5,19 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v11 — v10 전이학습: 높이+어깨+발위치 집중 개선."""
+    """Stage 1 (서기) PPO v12 — v11 전이학습: 전진 드리프트 차단."""
 
     num_steps_per_env = 32
     max_iterations = 2000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v11"
+    experiment_name = "spot_micro_stance_v12"
 
     resume = True
-    load_run = "2026-05-26_11-32-47"
-    load_checkpoint = "model_3799.pt"
-    load_experiment_name = "spot_micro_stance_v10"
-
-    resume = False
+    load_run = "2026-05-26_13-34-42"
+    load_checkpoint = "model_1999.pt"
+    load_experiment_name = "spot_micro_stance_v11"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,

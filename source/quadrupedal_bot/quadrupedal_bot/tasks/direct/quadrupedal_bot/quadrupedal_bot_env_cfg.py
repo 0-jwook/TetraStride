@@ -92,6 +92,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_foot_stance: float = 0.0     # walk-these-ways: stance 중 발 하중 보상 (발끝 착지 유도)
     rew_scale_knee_angle: float = 0.0      # knee too-straight penalty (>-0.3 rad → shin walking)
     rew_scale_knee_height_stance: float = 0.0  # knee too-low during contact penalty (shin walking detection)
+    knee_stance_height_threshold: float = 0.04  # 무릎 접지 감지 임계 높이 (m): 이 이하로 내려가면 패널티
     rew_scale_heading: float = 0.0         # heading tracking reward (angle-based, legged_gym 방식)
     heading_sigma: float = 0.25           # heading reward kernel sigma (작을수록 타이트한 직선 요구)
     gait_freq_hz: float = 1.5            # trot gait clock 주파수 (Hz)

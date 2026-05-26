@@ -311,7 +311,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         # Stance knee height penalty: if knee joint (foot_link origin) is near ground during contact
         # Normal stance: knee_z ≈ 0.06m. Shin walking: knee_z ≈ 0.01m → penalize
         knee_z = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]  # [N, 4]
-        knee_low_in_stance = (0.04 - knee_z).clamp(min=0.0) * contact_actual
+        knee_low_in_stance = (self.cfg.knee_stance_height_threshold - knee_z).clamp(min=0.0) * contact_actual
         rew_knee_height_stance = knee_low_in_stance.sum(dim=1) * self.cfg.rew_scale_knee_height_stance
 
         # v34: knee_z 기반 swing 발 들기 (v35에서 약화, 보조 역할)

@@ -44,6 +44,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
     rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)
     rew_scale_foot_contact: float = 5.0     # 4발 접지 강제: 3발=+3.75, 4발=+5.0 → 500스텝 차이 625
-    rew_scale_knee_height_stance: float = -30.0  # 무릎(foot_link) 높이 < 4cm 시 강한 패널티: 무릎 접지 직접 억제
+    rew_scale_knee_height_stance: float = -200.0  # v9: scale 대폭 강화(-30→-200), 무릎 접지 완전 억제
+    knee_stance_height_threshold: float = 0.06    # v9: 임계값 상향(0.04→0.06m), 더 넓은 범위 감지
     rew_scale_knee_angle: float = -2.0           # 무릎 관절 너무 펴질 때 패널티 (>-0.3 rad) — 무릎 접지 보조 억제
     action_scale: float = 0.25               # kp=30, effort=10: no saturation (stance 안정)

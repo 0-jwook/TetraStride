@@ -51,7 +51,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,
-            ".*_foot": -1.55,
+            ".*_foot": -1.48,   # -1.55→-1.48: 발끝 X=0 (힙 직하방), 지지중심=CoM → 전방 기울림 해소
         },
         joint_vel={".*": 0.0},
     ),

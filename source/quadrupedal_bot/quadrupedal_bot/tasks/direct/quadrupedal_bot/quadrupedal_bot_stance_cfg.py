@@ -47,4 +47,6 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_knee_height_stance: float = -200.0  # v9: scale 대폭 강화(-30→-200), 무릎 접지 완전 억제
     knee_stance_height_threshold: float = 0.06    # v9: 임계값 상향(0.04→0.06m), 더 넓은 범위 감지
     rew_scale_knee_angle: float = -2.0           # 무릎 관절 너무 펴질 때 패널티 (>-0.3 rad) — 무릎 접지 보조 억제
+    rew_scale_shoulder_default: float = -5.0  # v10: 어깨 관절 이탈 패널티 — 앞다리 중앙 수렴 차단
+    rew_scale_foot_side_span: float = -5.0    # v10: 같은쪽 앞/뒷발 Y축 정렬 패널티 — 앞다리 수렴 직접 감지
     action_scale: float = 0.25               # kp=30, effort=10: no saturation (stance 안정)

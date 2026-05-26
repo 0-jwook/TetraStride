@@ -5,17 +5,14 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v14 — v13 전이학습: foot default -1.48 (CoM 정렬) + target_height 0.176m."""
+    """Stage 1 (서기) PPO v22 — scratch 재학습: termination↑0.155 + body_height×200 + entropy↑0.05 (낙하전략 차단)."""
 
     num_steps_per_env = 32
-    max_iterations = 2000
+    max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v14"
+    experiment_name = "spot_micro_stance_v22"
 
-    resume = True
-    load_run = "2026-05-26_20-11-55"
-    load_checkpoint = "model_1999.pt"
-    load_experiment_name = "spot_micro_stance_v13"
+    resume = False
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=0.5,
@@ -30,7 +27,7 @@ class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.01,   # 0.005→0.01: 탐색 약간 강화 (local optimum 탈출), 0.05는 수렴 방해
+        entropy_coef=0.05,   # v22: 0.01→0.05, scratch 학습시 탐색 강화 → standing 발견 유도
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

@@ -5,48 +5,46 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v14 — v13 전이학습, 발 기본각 -1.55→-1.48 (CoM 정렬) + 목표높이 0.176m."""
+    """Stage 1: 서기 학습 v22 — scratch 재학습: termination↑0.155 + body_height_penalty↑200 + entropy↑0.05 (낙하 전략 차단)."""
 
-    episode_length_s: float = 20.0  # 더 긴 에피소드로 지속적 서기 학습
+    episode_length_s: float = 20.0
 
-    termination_height: float = 0.13   # 역관절 자세 기준: 0.17m 목표에서 4cm 여유
+    termination_height: float = 0.155
 
-    # 속도 명령 없음 — 항상 제자리
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
-    # 보상: 자세(중력 정렬) 유지만 학습
-    rew_scale_alive: float = 0.5        # 0.1→0.5 복원: alive 낮추면 균형 학습 신호 소실 → 0.38s 내 낙하
-    rew_scale_lin_vel: float = 0.0      # 속도 추적 없음
-    rew_scale_ang_vel: float = 0.0      # 각속도 추적 없음
-    rew_scale_lin_vel_z: float = -2.0   # 수직 진동 패널티
-    rew_scale_ang_vel_xy: float = -0.1  # 롤/피치 각속도 패널티 (강화)
-    rew_scale_gravity: float = -5.0     # 중력 정렬 패널티 (강화: 기울면 큰 패널티)
+    rew_scale_alive: float = 0.5
+    rew_scale_lin_vel: float = 0.0
+    rew_scale_ang_vel: float = 0.0
+    rew_scale_lin_vel_z: float = -2.0
+    rew_scale_ang_vel_xy: float = -0.3          # v14:-0.1 → v19:-0.3, tilt 속도 억제
+    rew_scale_gravity: float = -10.0            # v14:-5 → v19:-10, 기울기 패널티 2배
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
-    rew_scale_action_rate: float = -0.01
-    rew_scale_air_time: float = 0.0     # 발 들기 없음
-    rew_scale_movement: float = 0.0     # 이동 없음
-    rew_scale_gait: float = 0.0         # 보행 패턴 없음
-    target_body_height: float = 0.176           # leg=0.83, foot=-1.48: 지지중심=CoM 정렬 후 새 평형점
-    rew_scale_body_height: float = 18.0         # v13: 12→18, 높이 복원 (낮은 자세 → CoM 전방 유발)
-    rew_scale_non_foot_contact: float = -2.0   # 무릎/배 바닥 닿음 강한 패널티
-    rew_scale_lin_vel_xy: float = -50.0        # v13: -20→-50 복원, 드리프트 차단 핵심
-    rew_scale_ang_vel_z: float = -0.3          # yaw 스핀 패널티
-    rew_scale_upright: float = 2.0            # 직립 유지 강화
-    rew_scale_foot_spread: float = -8.0       # 다리 모임 차단
-    rew_scale_foot_slip: float = -3.0         # v13: -0.05→-3.0, 앞발 미끄러짐 직접 차단 (60배)
-    rew_scale_stand_still: float = 0.0         # 비활성화
-    rew_scale_base_drift: float = -15.0        # 누적 위치 드리프트 패널티 유지
-    freeze_gait_phase: bool = True    # gait clock 동결: 명령=0인 stance에서 주기적 불안정 제거
-    rew_scale_dof_pos_limits: float = -1.0   # 관절 soft limit 초과 패널티 (실로봇 서보 보호)
-    rew_scale_contact_forces: float = -1e-3  # 발 착지 충격력 패널티 (legged_gym 표준 스케일)
-    rew_scale_foot_contact: float = 5.0     # 4발 접지 강제: 3발=+3.75, 4발=+5.0 → 500스텝 차이 625
-    rew_scale_knee_height_stance: float = -200.0  # v9: scale 대폭 강화(-30→-200), 무릎 접지 완전 억제
-    knee_stance_height_threshold: float = 0.06    # v9: 임계값 상향(0.04→0.06m), 더 넓은 범위 감지
-    rew_scale_knee_angle: float = -2.0           # 무릎 관절 너무 펴질 때 패널티 (>-0.3 rad) — 무릎 접지 보조 억제
-    rew_scale_shoulder_default: float = -15.0  # v11: -5→-15, 어깨 벌어짐 강하게 억제
-    rew_scale_foot_side_span: float = -8.0    # v11: -5→-8, 앞/뒷발 Y축 정렬 강화
-    rew_scale_joint_default: float = -2.0     # v11: -0.5→-2.0, 전체 관절 기본자세 유지 강화
-    action_scale: float = 0.25               # kp=30, effort=10: no saturation (stance 안정)
+    rew_scale_action_rate: float = -0.05        # v21: -0.01→-0.05, 관절 속도 유발 동작 억제
+    rew_scale_air_time: float = 0.0
+    rew_scale_movement: float = 0.0
+    rew_scale_gait: float = 0.0
+    target_body_height: float = 0.163
+    rew_scale_body_height: float = -200.0       # v22: -60→-200, termination=0.155이면 0.155→0.163 결핍시 최대 1.6/step 패널티
+    rew_scale_non_foot_contact: float = -2.0
+    rew_scale_lin_vel_xy: float = -50.0         # v14 값 복원
+    rew_scale_ang_vel_z: float = -0.3
+    rew_scale_upright: float = 5.0              # v14:2 → v19:5, 직립 보상 2.5배 (8은 보행유발)
+    rew_scale_foot_spread: float = -8.0
+    rew_scale_foot_slip: float = -3.0
+    rew_scale_stand_still: float = 0.0
+    rew_scale_base_drift: float = -15.0         # v14 값 복원
+    freeze_gait_phase: bool = True
+    rew_scale_dof_pos_limits: float = -1.0
+    rew_scale_contact_forces: float = -1e-3
+    rew_scale_foot_contact: float = 5.0         # v14 값 복원
+    rew_scale_knee_height_stance: float = -200.0
+    knee_stance_height_threshold: float = 0.06
+    rew_scale_knee_angle: float = -2.0
+    rew_scale_shoulder_default: float = -15.0
+    rew_scale_foot_side_span: float = -8.0
+    rew_scale_joint_default: float = -2.0       # v14 값 복원 (drift 유발 없이 기본자세 유지)
+    action_scale: float = 0.10               # v21: 0.25→0.10, 스텝당 최대 관절 변화 60% 감소

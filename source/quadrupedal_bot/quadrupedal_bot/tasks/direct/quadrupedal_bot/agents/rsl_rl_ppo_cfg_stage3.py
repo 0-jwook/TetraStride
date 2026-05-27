@@ -5,17 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
-    """Stage 2: TrotInplace v5 — v4/model_200.pt 전이, drift-15.0 강화 (max패널티 45 > gait 5.7)."""
+    """Stage 2: TrotInplace v6 — v5/model_200 전이, drift-8.0 (0.7m균형점, v5 -15 보행포기 수정)."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_trot_inplace_v5"
+    experiment_name = "spot_micro_trot_inplace_v6"
 
     resume = True
-    load_run = "2026-05-27_09-33-08"
+    load_run = "2026-05-27_09-42-11"
     load_checkpoint = "model_200.pt"
-    load_experiment_name = "spot_micro_trot_inplace_v4"
+    load_experiment_name = "spot_micro_trot_inplace_v5"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

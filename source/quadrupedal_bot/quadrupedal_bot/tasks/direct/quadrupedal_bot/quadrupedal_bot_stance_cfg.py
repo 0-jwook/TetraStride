@@ -5,40 +5,39 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v28 — 높이 목표 제거 + alive 압도적 강화.
+    """Stage 1: 서기 학습 v29 — termination 높이 상향으로 높은 자세 강제.
 
-    v27 문제:
-      1. target_body_height=0.177m: DCMotor 자연 평형(≈0.163m) 위를 요구
-         → 정책이 능동 높이 유지를 학습 못 해 -1.2/step 상시 패널티
-      2. termination_height=0.155m: 자연 평형 0.163m에서 여유 0.8cm → 쉽게 조기종료
-      3. alive=2.0: 전체 보상의 19% → 생존보다 발접지/자세 보상이 더 큰 비중
+    v28 문제:
+      1. termination_height=0.145m: 낮은 종료 임계값 → 로봇이 0.151m에 안주
+      2. stand_still=-2.0: 관절을 default(낮은 자세)로 끌어당겨 높이 하락 유인
+         → 후반부 foot_contact 3.66→2.54 하락, body_height 0.157→0.151m 하락
+      3. 0.151m는 실제 로봇 다리 길이 대비 너무 낮은 자세
 
-    v28 수정:
-      1. body_height reward 제거 (자연 평형 0.163m 수용, 높이는 종료로만 제어)
-      2. termination_height: 0.155→0.145 (자연 평형에서 1.8cm 여유)
-      3. alive: 2.0→10.0 (전체 양의 보상의 50% → 서있기 = 최우선)
-      4. stand_still: 0→-2.0 (재활성, 높이 유지 충돌 없으므로 안전)
+    v29 수정:
+      1. termination_height: 0.145→0.155 (현재 0.151m에서 4mm 위)
+         → 0.155m 이하로 내려가면 즉시 종료 → alive=10.0으로 높이 유지 강제
+      2. stand_still: -2.0→0.0 (제거 — 낮은 자세 유인 차단)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.145      # v27:0.155 → v28:0.145
+    termination_height: float = 0.155      # v28:0.145 → v29:0.155 (높이 강제)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
     # === 주요 양의 보상 ===
-    rew_scale_alive: float = 10.0          # v27:2.0 → v28:10.0 (서있기 50% 비중)
+    rew_scale_alive: float = 10.0
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 4.0    # 이진: 4발 동시 접지만 보상
 
-    # === 높이 목표 제거 (자연 평형 수용) ===
+    # === 높이 목표 제거 유지 (종료로만 제어) ===
     target_body_height: float = 0.163      # 참조용 (보상 비활성)
-    rew_scale_body_height: float = 0.0     # v27:-80.0 → v28:0.0 (높이 목표 제거)
+    rew_scale_body_height: float = 0.0
 
-    # === stand_still 재활성 ===
-    rew_scale_stand_still: float = -2.0    # v27:0.0 → v28:-2.0 (자연 자세 유지)
+    # === stand_still 제거 (낮은 자세 유인 차단) ===
+    rew_scale_stand_still: float = 0.0     # v28:-2.0 → v29:0.0
 
     # === 자세 패널티 ===
     rew_scale_non_foot_contact: float = -8.0

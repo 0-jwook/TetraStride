@@ -19,6 +19,7 @@ class QuadrupedalBotWalkFwdCfg(QuadrupedalBotTrotInplaceCfg):
     rew_scale_lin_vel: float = 6.0
     rew_scale_ang_vel: float = 0.5
     rew_scale_movement: float = 2.0
+    rew_scale_lin_vel_xy: float = 0.0   # TrotInplace 제자리패널티(-5.0) 비활성화: 전진 허용
 
     # --- gait 강화 ---
     rew_scale_gait: float = 12.0

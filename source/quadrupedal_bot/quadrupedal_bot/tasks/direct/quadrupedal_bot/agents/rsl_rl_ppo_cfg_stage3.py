@@ -83,17 +83,17 @@ class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
-    """Stage 4: WalkAllDir — kp=30 WalkFwd 전이학습."""
+    """Stage 4: WalkAllDir — v2 WalkFwd 전이학습."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_alldir_kp30"
+    experiment_name = "spot_micro_walk_alldir_v2"
 
     resume = True
-    load_run = "2026-05-23_06-01-20"
+    load_run = "2026-05-27_12-12-48"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_fwd_kp30"
+    load_experiment_name = "spot_micro_walk_fwd_v2"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -122,17 +122,17 @@ class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage6(RslRlOnPolicyRunnerCfg):
-    """Stage 5: InplaceRot — kp=30 WalkAllDir 전이학습."""
+    """Stage 5: InplaceRot — v2 WalkAllDir 전이학습."""
 
     num_steps_per_env = 32
     max_iterations = 2000
     save_interval = 200
-    experiment_name = "spot_micro_inplace_rot_kp30"
+    experiment_name = "spot_micro_inplace_rot_v2"
 
     resume = True
-    load_run = "2026-05-23_07-53-55"
+    load_run = "TBD"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_alldir_kp30"
+    load_experiment_name = "spot_micro_walk_alldir_v2"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

@@ -413,7 +413,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
         foot_force_z_contact = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]
         foot_in_contact_4 = (torch.abs(foot_force_z_contact) > 1.0).float()  # [N, 4]
         num_contacts = foot_in_contact_4.sum(dim=1)  # [N], 0~4
-        rew_foot_contact = (num_contacts / 4.0) * self.cfg.rew_scale_foot_contact
+        rew_foot_contact = (num_contacts >= 4).float() * self.cfg.rew_scale_foot_contact
 
         # Foot spread penalty: 양방향 — 너무 모이거나 너무 벌어지는 것 모두 패널티
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]

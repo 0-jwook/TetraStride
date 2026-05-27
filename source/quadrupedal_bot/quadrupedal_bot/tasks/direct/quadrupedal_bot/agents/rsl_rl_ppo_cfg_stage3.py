@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
-    """Stage 2: TrotInplace v3 — scratch 학습 (v22 action_scale=0.10 불일치로 전이 불가)."""
+    """Stage 2: TrotInplace v4 — scratch 학습, termination↑0.13, drift-1.5, deficit body_height-80."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_trot_inplace_v3"
+    experiment_name = "spot_micro_trot_inplace_v4"
 
     resume = False
 

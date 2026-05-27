@@ -5,11 +5,14 @@ from .quadrupedal_bot_trot_cfg import QuadrupedalBotTrotCfg
 
 @configclass
 class QuadrupedalBotTrotInplaceCfg(QuadrupedalBotTrotCfg):
-    """Stage 2: 제자리 Trot — Standing v3c 위에 gait 추가.
-    서있기 안정성 유지하며 trot 패턴 발 들기 추가.
-    """
+    """Stage 2: 제자리 Trot v4 — 크라우칭/드리프트 수정 (termination↑0.13, drift-1.5, deficit body_height-80)."""
 
     episode_length_s: float = 20.0
+
+    # v4 fixes: 크라우칭/드리프트 방지
+    termination_height: float = 0.13          # 0.10→0.13: 12cm 크라우칭 방지
+    rew_scale_base_drift: float = -1.5        # 위치 이탈 패널티 (default=0)
+    rew_scale_body_height: float = -80.0      # Gaussian(+3)→deficit(-80): 낮은 자세 강력 방지
 
     gait_reward_always_on: bool = True
     gait_freq_hz: float = 1.2

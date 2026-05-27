@@ -5,17 +5,14 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
-    """Stage 2: TrotInplace v2 — v22 Stance(model_600) 전이학습."""
+    """Stage 2: TrotInplace v3 — scratch 학습 (v22 action_scale=0.10 불일치로 전이 불가)."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_trot_inplace_v2"
+    experiment_name = "spot_micro_trot_inplace_v3"
 
-    resume = True
-    load_run = "2026-05-27_08-53-36"
-    load_checkpoint = "model_600.pt"
-    load_experiment_name = "spot_micro_stance_v22"
+    resume = False
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -30,7 +27,7 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
         value_loss_coef=1.0,
         use_clipped_value_loss=True,
         clip_param=0.2,
-        entropy_coef=0.015,
+        entropy_coef=0.02,     # v3: 0.015→0.02, 발 들기 탐색 강화
         num_learning_epochs=5,
         num_mini_batches=4,
         learning_rate=1.0e-3,

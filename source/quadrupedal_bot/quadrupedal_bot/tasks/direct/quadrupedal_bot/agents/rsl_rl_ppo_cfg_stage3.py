@@ -5,17 +5,17 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
-    """Stage 2: TrotInplace — kp=30 Stance 전이학습."""
+    """Stage 2: TrotInplace v2 — v22 Stance(model_600) 전이학습."""
 
     num_steps_per_env = 32
-    max_iterations = 2000
+    max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_trot_inplace_kp30"
+    experiment_name = "spot_micro_trot_inplace_v2"
 
     resume = True
-    load_run = "2026-05-26_13-34-42"
-    load_checkpoint = "model_1999.pt"
-    load_experiment_name = "spot_micro_stance_v11"
+    load_run = "2026-05-27_08-53-36"
+    load_checkpoint = "model_600.pt"
+    load_experiment_name = "spot_micro_stance_v22"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

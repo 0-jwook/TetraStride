@@ -44,17 +44,17 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
-    """Stage 3: WalkFwd — kp=30 TrotInplace 전이학습."""
+    """Stage 3: WalkFwd — v7 TrotInplace 전이학습 (gait=7.64, vel=0.10m/s, height=16.4cm)."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_fwd_kp30"
+    experiment_name = "spot_micro_walk_fwd_v2"
 
     resume = True
-    load_run = "2026-05-23_04-46-53"
-    load_checkpoint = "model_1999.pt"
-    load_experiment_name = "spot_micro_trot_inplace_kp30"
+    load_run = "2026-05-27_10-22-30"
+    load_checkpoint = "model_2999.pt"
+    load_experiment_name = "spot_micro_trot_inplace_v7"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

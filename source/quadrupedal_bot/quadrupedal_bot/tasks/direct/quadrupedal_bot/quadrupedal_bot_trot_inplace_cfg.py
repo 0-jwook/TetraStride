@@ -9,10 +9,10 @@ class QuadrupedalBotTrotInplaceCfg(QuadrupedalBotTrotCfg):
 
     episode_length_s: float = 20.0
 
-    # v4 fixes: 크라우칭/드리프트 방지
-    termination_height: float = 0.13          # 0.10→0.13: 12cm 크라우칭 방지
-    rew_scale_base_drift: float = -1.5        # 위치 이탈 패널티 (default=0)
-    rew_scale_body_height: float = -80.0      # Gaussian(+3)→deficit(-80): 낮은 자세 강력 방지
+    # v5 fixes: 강한 위치 앵커 (v4 -1.5 너무 약함 → -15.0, max패널티 45/step > gait 5.7)
+    termination_height: float = 0.13          # 0.10→0.13: 크라우칭 방지
+    rew_scale_base_drift: float = -15.0       # -1.5→-15.0: clamp(3.0)×15=45 >> gait(5.7)
+    rew_scale_body_height: float = -80.0      # deficit penalty: 낮은 자세 강력 방지
 
     gait_reward_always_on: bool = True
     gait_freq_hz: float = 1.2

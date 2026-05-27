@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v22 — scratch 재학습: termination↑0.155 + body_height×200 + entropy↑0.05 (낙하전략 차단)."""
+    """Stage 1 (서기) PPO v23 — 보상 스케일 균형 재설계, scratch 학습."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v22"
+    experiment_name = "spot_micro_stance_v23"
 
     resume = False
 

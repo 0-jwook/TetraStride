@@ -130,7 +130,7 @@ class PPORunnerCfgStage6(RslRlOnPolicyRunnerCfg):
     experiment_name = "spot_micro_inplace_rot_v2"
 
     resume = True
-    load_run = "TBD"
+    load_run = "2026-05-27_14-04-34"
     load_checkpoint = "model_2999.pt"
     load_experiment_name = "spot_micro_walk_alldir_v2"
 

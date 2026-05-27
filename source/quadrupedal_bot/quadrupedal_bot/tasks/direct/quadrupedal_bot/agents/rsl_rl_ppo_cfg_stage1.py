@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v24 — stand_still 활성화 + foot_contact 이진화."""
+    """Stage 1 (서기) PPO v25 — stand_still 제거, body_height 강화."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v24"
+    experiment_name = "spot_micro_stance_v25"
 
     resume = False
 

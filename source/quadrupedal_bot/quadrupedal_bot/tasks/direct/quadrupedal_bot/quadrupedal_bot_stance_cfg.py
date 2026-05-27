@@ -5,16 +5,18 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v24 — stand_still 활성화 + foot_contact 이진화(env 수정).
+    """Stage 1: 서기 학습 v25 — stand_still 제거, body_height 강화.
 
-    v23 문제:
-      - stand_still=0: 관절 이탈 패널티 없어서 로봇이 걸어다님
-      - foot_contact 비례 보상: 2발 교대로 평균 2.5 유지하는 해킹
+    v24 문제:
+      - stand_still(-3.0) vs body_height(-30): 충돌
+      - 로봇이 중력에 맞서 능동 관절 제어해야 높이 유지 가능한데,
+        stand_still이 그 능동 제어를 패널티로 억제 → 스르륵 주저앉음
+      - "가라앉아 굳어있기"가 보상 흑자 = local optimum
 
-    v24 수정:
-      - stand_still=-3.0: cmd=0일 때 관절 이탈 강하게 패널티 (12관절×0.1rad=3.6/step)
-      - foot_contact 이진화: (num_contacts>=4) → 4발 완전 접지만 보상, 부분 접지 해킹 차단
-      - 보상 구조: legged_gym 원칙 — 양의 보상 최소화, regularizer 약하게
+    v25 수정:
+      - stand_still 제거: 능동 높이 유지 허용
+      - body_height: -30→-80 (높이 유지가 가라앉기보다 명확히 유리하게)
+      - lin_vel_z: -2→-5 (가라앉는 속도 직접 억제)
     """
 
     episode_length_s: float = 20.0
@@ -30,12 +32,12 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 4.0    # 이진: 4발 동시 접지만 보상
 
-    # === 핵심 추가: 가만히 있어 (stand_still) ===
-    rew_scale_stand_still: float = -3.0    # v23:0 → v24:-3.0, cmd=0일때 관절이탈 패널티
-
-    # === 높이 패널티 ===
+    # === 높이 패널티 (강화: 가라앉기보다 유지가 유리해야) ===
     target_body_height: float = 0.163
-    rew_scale_body_height: float = -30.0
+    rew_scale_body_height: float = -80.0   # v24:-30 → v25:-80
+
+    # === stand_still 제거 (능동 관절 제어 허용) ===
+    rew_scale_stand_still: float = 0.0     # v24:-3.0 → v25:0.0
 
     # === 자세 패널티 ===
     rew_scale_non_foot_contact: float = -8.0
@@ -46,7 +48,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # === 안정화 패널티 ===
     rew_scale_gravity: float = -5.0
     rew_scale_ang_vel_xy: float = -0.5
-    rew_scale_lin_vel_z: float = -2.0
+    rew_scale_lin_vel_z: float = -5.0     # v24:-2 → v25:-5, 가라앉는 속도 직접 억제
     rew_scale_ang_vel_z: float = -0.5
     rew_scale_lin_vel_xy: float = -8.0
     rew_scale_base_drift: float = 0.0

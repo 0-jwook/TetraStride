@@ -5,18 +5,20 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v25 — stand_still 제거, body_height 강화.
+    """Stage 1: 서기 학습 v26 — target_body_height 자연 평형 높이로 조정 + spinning 차단.
 
-    v24 문제:
-      - stand_still(-3.0) vs body_height(-30): 충돌
-      - 로봇이 중력에 맞서 능동 관절 제어해야 높이 유지 가능한데,
-        stand_still이 그 능동 제어를 패널티로 억제 → 스르륵 주저앉음
-      - "가라앉아 굳어있기"가 보상 흑자 = local optimum
+    v25 문제:
+      1. target_body_height=0.163m이 실제 default 평형(0.177m)보다 낮음
+         → 평형에서 패널티 없고, 가라앉아도 패널티 작음 (그라디언트 약함)
+      2. ang_vel_z=-0.5 너무 약함 → 원형 회전 흑자 (spinning 해킹)
+      3. base_drift=0 → 위치 이탈 패널티 없음
 
-    v25 수정:
-      - stand_still 제거: 능동 높이 유지 허용
-      - body_height: -30→-80 (높이 유지가 가라앉기보다 명확히 유리하게)
-      - lin_vel_z: -2→-5 (가라앉는 속도 직접 억제)
+    v26 수정:
+      1. target_body_height: 0.163→0.177 (자연 평형 = 목표)
+         → 조금만 가라앉아도 즉시 패널티, 그라디언트 3배 강해짐
+         → 자연 평형에서 능동 제어 없이도 패널티 0
+      2. ang_vel_z: -0.5→-5.0 (spinning 10배 억제)
+      3. base_drift: 0→-8.0 (위치 이탈 패널티 복구)
     """
 
     episode_length_s: float = 20.0
@@ -32,12 +34,12 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 4.0    # 이진: 4발 동시 접지만 보상
 
-    # === 높이 패널티 (강화: 가라앉기보다 유지가 유리해야) ===
-    target_body_height: float = 0.163
-    rew_scale_body_height: float = -80.0   # v24:-30 → v25:-80
+    # === 높이 목표: 자연 평형 높이로 조정 ===
+    target_body_height: float = 0.177      # v25:0.163 → v26:0.177 (default 관절 평형)
+    rew_scale_body_height: float = -80.0   # 0.177→0.155 가라앉으면 -1.76/step (v25의 3배)
 
-    # === stand_still 제거 (능동 관절 제어 허용) ===
-    rew_scale_stand_still: float = 0.0     # v24:-3.0 → v25:0.0
+    # === stand_still 비활성 유지 (능동 제어 허용) ===
+    rew_scale_stand_still: float = 0.0
 
     # === 자세 패널티 ===
     rew_scale_non_foot_contact: float = -8.0
@@ -48,10 +50,10 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # === 안정화 패널티 ===
     rew_scale_gravity: float = -5.0
     rew_scale_ang_vel_xy: float = -0.5
-    rew_scale_lin_vel_z: float = -5.0     # v24:-2 → v25:-5, 가라앉는 속도 직접 억제
-    rew_scale_ang_vel_z: float = -0.5
+    rew_scale_lin_vel_z: float = -5.0
+    rew_scale_ang_vel_z: float = -5.0     # v25:-0.5 → v26:-5.0 (spinning 차단)
     rew_scale_lin_vel_xy: float = -8.0
-    rew_scale_base_drift: float = 0.0
+    rew_scale_base_drift: float = -8.0    # v25:0 → v26:-8.0 (위치 이탈 복구)
 
     # === 동작 품질 ===
     rew_scale_action_rate: float = -0.05

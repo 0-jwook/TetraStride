@@ -9,9 +9,9 @@ class QuadrupedalBotTrotInplaceCfg(QuadrupedalBotTrotCfg):
 
     episode_length_s: float = 20.0
 
-    # v6: 균형 잡힌 위치 앵커 (v5 -15.0 과도: 0.8m×15=12 > gait 5.7 → 보행 포기)
+    # v7: 제곱속도 패널티 (v4-v6 clamp 문제 → 제곱 무제한 성장)
     termination_height: float = 0.13          # 0.10→0.13: 크라우칭 방지
-    rew_scale_base_drift: float = -8.0        # -15→-8: 0.7m×8=5.6 ≈ gait, 자연 균형점
+    rew_scale_lin_vel_xy: float = -5.0        # v²×5 패널티: 1m/s→-5/step, 빠를수록 quadratic 억제
     rew_scale_body_height: float = -80.0      # deficit penalty: 낮은 자세 강력 방지
 
     gait_reward_always_on: bool = True

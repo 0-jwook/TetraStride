@@ -5,20 +5,20 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v32 — termination_height 상향 + body_height 강화.
+    """Stage 1 (서기) PPO v32b — termination_height 0.168 유지, body_height scale 8.0 복구.
 
-    v31b 문제: body_height 0.164m plateau (목표 0.177m 미달), stance4 73%에서 수렴
-    v32 수정:
-      - termination_height: 0.155→0.168 (sinking 강제 방지)
-      - rew_scale_body_height: 8.0→12.0 (높이 보상 강화)
-      - non_foot_contact 중복 정의 버그 수정
-      hyperparameter는 v31b 유지 (collapse 방지 확인됨)
+    v32 실패: body_height scale=12.0이 발 접지 학습 압도 → stance4 1.2%로 붕괴
+    v32b 수정:
+      - rew_scale_body_height: 12.0 → 8.0 복구 (v31b 수준)
+      - termination_height: 0.168 유지 (높이 강제 효과 확인)
+      - non_foot_contact 버그 수정 유지 (-30.0 올바르게 적용)
+      hyperparameter는 v31b 유지
     """
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v32"
+    experiment_name = "spot_micro_stance_v32b"
 
     resume = False
 

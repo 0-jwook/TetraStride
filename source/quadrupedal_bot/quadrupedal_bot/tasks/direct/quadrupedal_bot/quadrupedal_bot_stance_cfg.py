@@ -15,8 +15,12 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     v32 수정:
       1. termination_height: 0.155 → 0.168 (현재 equilibrium 0.164m 위로 강제)
          → 로봇이 0.168m 이상 유지 안 하면 종료 → alive=8.0으로 강한 유지 동기
-      2. rew_scale_body_height: 8.0 → 12.0 (높이 보상 강화로 0.177m 유인 증가)
+      2. rew_scale_body_height: 8.0 유지 (12.0은 높이 신호가 발 접지 학습 압도 → v32 실패)
       3. 중복 non_foot_contact 정의 버그 수정 (-8.0이 -30.0을 덮어쓰던 문제)
+
+    v32b 수정 (v32 → v32b):
+      - rew_scale_body_height: 12.0 → 8.0 복구 (v32에서 stance4 1.2%로 붕괴 확인)
+      - termination_height=0.168m는 유지 (높이 강제 효과 확인됨)
     """
 
     episode_length_s: float = 20.0
@@ -32,9 +36,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 12.0   # v30:6.0 → v31:12.0 (1,2,3,8 piecewise, 4발=12.0)
 
-    # === 높이 보상 강화 ===
+    # === 높이 보상 (v31b 동일, v32에서 12.0 시도했으나 실패) ===
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 12.0  # v31:8.0 → v32:12.0 (높이 유인 강화)
+    rew_scale_body_height: float = 8.0  # v32:12.0 → v32b:8.0 복구
 
     # === 무릎 서기 차단 강화 ===
     rew_scale_non_foot_contact: float = -30.0  # v30:-8.0 → v31:-30.0 (버그 수정: 중복 정의 제거)

@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v29 — termination 높이 상향으로 높은 자세 강제."""
+    """Stage 1 (서기) PPO v30 — kp=80 + Gaussian 높이 보상."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v29"
+    experiment_name = "spot_micro_stance_v30"
 
     resume = False
 

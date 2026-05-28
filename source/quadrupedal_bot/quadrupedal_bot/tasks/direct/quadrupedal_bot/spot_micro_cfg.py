@@ -69,16 +69,16 @@ SPOT_MICRO_CFG = ArticulationCfg(
             effort_limit=10.0,
             saturation_effort=10.0,
             velocity_limit=7.5,     # MG996R @6V: 7.5 rad/s
-            stiffness=30.0,
-            damping=2.0,            # v21: 0.8→2.0, 관절 속도 억제 → 토크-속도 함정 방지
+            stiffness=80.0,         # v29:30 → v30:80, 중력 처짐 0.007rad으로 감소
+            damping=2.0,
         ),
         "foot_joints": DCMotorCfg(
             joint_names_expr=[".*_foot"],
             effort_limit=10.0,
             saturation_effort=10.0,
             velocity_limit=7.5,
-            stiffness=30.0,
-            damping=2.0,            # v21: 0.8→2.0, 역관절 주저앉음 방지
+            stiffness=80.0,         # v29:30 → v30:80, 역관절 주저앉음 방지 강화
+            damping=2.0,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

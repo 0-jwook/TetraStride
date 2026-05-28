@@ -5,39 +5,40 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v29 — termination 높이 상향으로 높은 자세 강제.
+    """Stage 1: 서기 학습 v30 — kp=80 + Gaussian 높이 보상으로 다리 접힘 근본 해결.
 
-    v28 문제:
-      1. termination_height=0.145m: 낮은 종료 임계값 → 로봇이 0.151m에 안주
-      2. stand_still=-2.0: 관절을 default(낮은 자세)로 끌어당겨 높이 하락 유인
-         → 후반부 foot_contact 3.66→2.54 하락, body_height 0.157→0.151m 하락
-      3. 0.151m는 실제 로봇 다리 길이 대비 너무 낮은 자세
+    v29 문제:
+      1. kp=30: 모터가 중력을 버티지 못해 관절이 스르륵 접힘 (물리적 근본 원인)
+      2. body_height 보상 없음: 낮아져도 패널티 없음 → 능동적으로 접기 학습
+      3. 시각화에서 명확히 확인: 자세 유지 불가, 0.155m 조기종료 반복
 
-    v29 수정:
-      1. termination_height: 0.145→0.155 (현재 0.151m에서 4mm 위)
-         → 0.155m 이하로 내려가면 즉시 종료 → alive=10.0으로 높이 유지 강제
-      2. stand_still: -2.0→0.0 (제거 — 낮은 자세 유인 차단)
+    v30 수정:
+      1. kp: 30→80 (spot_micro_cfg.py) — 중력 처짐 0.018rad→0.007rad으로 감소
+      2. rew_scale_body_height: 0.0→+8.0 (Gaussian, sigma=0.05m)
+         → 0.177m 기준: 0.177m=8.0, 0.163m=6.05, 0.155m=5.15 — 높이 유지 명확한 기울기
+      3. target_body_height: 0.163→0.177 (kp=80이면 도달 가능)
+      4. alive: 10.0→8.0, foot_contact: 4.0→6.0 (alive 독주 완화, 삼등분 균형)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.155      # v28:0.145 → v29:0.155 (높이 강제)
+    termination_height: float = 0.155
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
-    # === 주요 양의 보상 ===
-    rew_scale_alive: float = 10.0
+    # === 주요 양의 보상 (삼등분 균형) ===
+    rew_scale_alive: float = 8.0           # v29:10.0 → v30:8.0
     rew_scale_upright: float = 6.0
-    rew_scale_foot_contact: float = 4.0    # 이진: 4발 동시 접지만 보상
+    rew_scale_foot_contact: float = 6.0    # v29:4.0 → v30:6.0 (이진 유지)
 
-    # === 높이 목표 제거 유지 (종료로만 제어) ===
-    target_body_height: float = 0.163      # 참조용 (보상 비활성)
-    rew_scale_body_height: float = 0.0
+    # === 높이 보상 복활 (Gaussian) ===
+    target_body_height: float = 0.177      # v29:0.163 → v30:0.177 (kp=80로 도달 가능)
+    rew_scale_body_height: float = 8.0     # v29:0.0 → v30:+8.0 (Gaussian, scale>0)
 
-    # === stand_still 제거 (낮은 자세 유인 차단) ===
-    rew_scale_stand_still: float = 0.0     # v28:-2.0 → v29:0.0
+    # === stand_still 비활성 유지 ===
+    rew_scale_stand_still: float = 0.0
 
     # === 자세 패널티 ===
     rew_scale_non_foot_contact: float = -8.0

@@ -47,7 +47,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.22),
+        pos=(0.0, 0.0, 0.18),  # v34: 0.22→0.18 (실제 서기 높이 0.176m, 초기 낙하 44mm→4mm)
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,

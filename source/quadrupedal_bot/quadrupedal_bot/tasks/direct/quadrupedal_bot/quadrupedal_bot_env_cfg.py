@@ -130,6 +130,13 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     sigma_knee_swing: float = 0.2               # Gaussian 폭
     rew_scale_knee_swing_gauss: float = 0.0     # swing knee Gaussian 보상 (v51)
 
+    # --- v34: 다리 뻗음 보상 (FK 기반, 4발 개별 Gaussian) ---
+    # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee)  → 어깨 아래 수직 뻗음 (m)
+    # 기본자세(leg=0.83, knee=-1.48)에서 target=0.177m과 일치
+    target_leg_extension: float = 0.177   # 목표 수직 뻗음 (m)
+    sigma_leg_extension: float = 0.02     # Gaussian 폭 (작을수록 타이트)
+    rew_scale_leg_extension: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
+
     # --- Stage1.5: 제자리 발 들기 모드 ---
     # True이면 gait/air_time/foot_height/swing 보상을 cmd_has_vel_gate 없이 항상 적용
     # cmd=0인 제자리 학습에서 발 들기 보상을 활성화하기 위해 필요

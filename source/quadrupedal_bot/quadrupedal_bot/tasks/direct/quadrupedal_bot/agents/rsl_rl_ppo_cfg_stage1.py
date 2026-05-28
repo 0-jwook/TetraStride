@@ -5,20 +5,22 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v33 — termination_height 복구 + joint_default 강화.
+    """Stage 1 (서기) PPO v34 — termination_height 완화 + FK 다리 뻗음 보상.
 
-    v32/v32b 실패: termination_height=0.168m > 자연 평형 0.164m
-      → 에피소드 평균 1.37초 만에 99% 조기종료 → 학습 붕괴
-    v33 수정:
-      - termination_height: 0.168 → 0.150 (에피소드 길이 복구)
-      - rew_scale_joint_default: -1.0 → -5.0 (관절 default 유지 강화로 sinking 억제)
-      hyperparameter는 v31b 유지
+    v33 실패: ep_len=74 plateau, 정책이 낮게 앉는 게 최적 전략
+      → termination_height=0.150m 과 자연평형 0.163m 사이 13mm 버퍼만 존재
+      → alive 보상이 height 보상을 이김: 낮게 앉음 = 긴 에피소드 = 더 많은 누적 보상
+    v34 수정:
+      - termination_height: 0.150 → 0.100 (버퍼 13mm → 63mm)
+      - rew_scale_body_height: 8.0 → 0.0 (root_pos_w 기반 제거)
+      - rew_scale_leg_extension: 2.0 × 4발 (FK Gaussian, 목표 0.177m)
+      - init_pos z: 0.22 → 0.18 (초기 낙하 44mm → 4mm)
     """
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v33"
+    experiment_name = "spot_micro_stance_v34"
 
     resume = False
 

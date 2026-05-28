@@ -360,6 +360,17 @@ class QuadrupedalBotEnv(DirectRLEnv):
         air_time_var = torch.var(self.contact_sensor.data.last_air_time[:, self._foot_ids], dim=1)
         rew_air_time_var = -air_time_var * self.cfg.rew_scale_air_time_var
 
+        # Per-leg vertical extension reward (FK, v34)
+        # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee) : 어깨 아래 수직 뻗음
+        _leg_a  = self.joint_pos[:, self._leg_ids]   # [N, 4]
+        _knee_a = self.joint_pos[:, self._knee_ids]  # [N, 4]
+        _leg_ext = 0.1075 * torch.cos(_leg_a) + 0.130 * torch.cos(_leg_a + _knee_a)  # [N, 4]
+        _ext_err = (_leg_ext - self.cfg.target_leg_extension).pow(2)
+        rew_leg_extension = (
+            torch.exp(-_ext_err / (2.0 * self.cfg.sigma_leg_extension ** 2)).sum(dim=1)
+            * self.cfg.rew_scale_leg_extension
+        )
+
         # Body height reward:
         #   scale > 0: Gaussian reward centered at target (특정 높이 강제 — 비대칭 자세 유발 위험)
         #   scale < 0: 단방향 페널티 — target 이하일 때만 선형 패널티 (자연 높이 허용)
@@ -570,6 +581,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/dof_acc": rew_dof_acc.mean().item(),
                 "rew/dof_pos_limits": rew_dof_pos_limits.mean().item(),
                 "rew/contact_forces": rew_contact_forces.mean().item(),
+                "rew/leg_extension": rew_leg_extension.mean().item(),
+                "diag/leg_ext_mean": _leg_ext.mean().item(),
+                "diag/leg_ext_min":  _leg_ext.min().item(),
                 "rew/body_height": rew_body_height.mean().item(),
                 "rew/yaw_error": rew_ang_vel_z.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
@@ -639,7 +653,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/leg_angle_mean": leg_angle.mean().item(),
             }
 
-        return (base_rew + rew_gait + rew_body_height + rew_non_foot_contact + rew_joint_default
+        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_non_foot_contact + rew_joint_default
                 + rew_shoulder_default + rew_foot_side_span
                 + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces

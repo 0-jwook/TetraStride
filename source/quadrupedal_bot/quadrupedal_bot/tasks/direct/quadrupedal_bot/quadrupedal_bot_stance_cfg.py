@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v34 — termination_height 대폭 완화 + 다리 뻗음 보상(FK).
+    """Stage 1: 서기 학습 v35 — leg_extension 수식 수정 (Gaussian→Laplace).
 
     v33 실패 원인 분석:
       - ep_len=74 plateau (목표 1000 steps 미달)
@@ -44,7 +44,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee), 목표 0.177m
     # 4발 개별 Gaussian 합산 → max 4×1.0×scale = 4×2.0 = 8.0
     target_leg_extension: float = 0.177
-    sigma_leg_extension: float = 0.02
+    sigma_leg_extension: float = 0.05   # v35: 0.02→0.05 (exp(-|err|/σ), body_height와 동일 계열)
     rew_scale_leg_extension: float = 2.0
 
     # === 무릎 서기 차단 강화 ===

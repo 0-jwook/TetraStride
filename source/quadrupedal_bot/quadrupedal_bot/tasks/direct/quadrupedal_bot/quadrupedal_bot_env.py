@@ -365,9 +365,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _leg_a  = self.joint_pos[:, self._leg_ids]   # [N, 4]
         _knee_a = self.joint_pos[:, self._knee_ids]  # [N, 4]
         _leg_ext = 0.1075 * torch.cos(_leg_a) + 0.130 * torch.cos(_leg_a + _knee_a)  # [N, 4]
-        _ext_err = (_leg_ext - self.cfg.target_leg_extension).pow(2)
+        _ext_err = (_leg_ext - self.cfg.target_leg_extension).abs()
         rew_leg_extension = (
-            torch.exp(-_ext_err / (2.0 * self.cfg.sigma_leg_extension ** 2)).sum(dim=1)
+            torch.exp(-_ext_err / self.cfg.sigma_leg_extension).sum(dim=1)
             * self.cfg.rew_scale_leg_extension
         )
 

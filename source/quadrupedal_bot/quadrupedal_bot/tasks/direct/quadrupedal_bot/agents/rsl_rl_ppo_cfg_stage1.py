@@ -5,18 +5,20 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v31b — v31 설계 유지, policy collapse 방지 hyperparameter 조정.
+    """Stage 1 (서기) PPO v32 — termination_height 상향 + body_height 강화.
 
-    v31 문제: entropy_coef=0.05 과다 탐색으로 iter844 이후 policy collapse
-    v31b 수정:
-      - entropy_coef: 0.05→0.01 (탐색 감소, 안정적 수렴)
-      - learning_rate: 1e-3→5e-4 (보수적 업데이트)
+    v31b 문제: body_height 0.164m plateau (목표 0.177m 미달), stance4 73%에서 수렴
+    v32 수정:
+      - termination_height: 0.155→0.168 (sinking 강제 방지)
+      - rew_scale_body_height: 8.0→12.0 (높이 보상 강화)
+      - non_foot_contact 중복 정의 버그 수정
+      hyperparameter는 v31b 유지 (collapse 방지 확인됨)
     """
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v31b"
+    experiment_name = "spot_micro_stance_v32"
 
     resume = False
 

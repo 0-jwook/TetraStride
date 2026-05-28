@@ -5,25 +5,23 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v31 — 무릎 서기 차단 + 1,2,3,8 발접지 보상.
+    """Stage 1: 서기 학습 v32 — termination_height 상향으로 높이 sinking 해결.
 
-    v30 문제:
-      1. 이진 foot_contact: 4발 동시 달성이 어려워 아예 포기
-      2. body_height(8)+alive(8)=16 > foot_contact(6): 무릎으로 서기가 최적 전략
-         → 시각화 확인: 로봇이 무릎을 디디고 발은 공중에 뜬 상태
-      3. non_foot_contact=-8.0: 무릎 패널티보다 body_height 보상이 커서 돌파
+    v31b 문제:
+      1. body_height 0.181m → 0.164m으로 가라앉아 plateau (목표 0.177m 미달)
+      2. stance4 ~73%에서 수렴 (entropy 급감으로 local optimum 도달)
+      3. termination_height=0.155m이 너무 낮아 0.164m에서도 alive 보상 full 획득
 
-    v31 수정:
-      1. foot_contact: 이진→1,2,3,8 piecewise (env.py 수정)
-         → 0발=0, 1발=1.5, 2발=3.0, 3발=4.5, 4발=12.0
-         → 부분 접지도 보상 → 점진적으로 4발 학습 유도
-      2. rew_scale_foot_contact: 6→12 (4발 시 12.0, alive+body_height 16 대응)
-      3. non_foot_contact: -8→-30 (무릎 서기 강력 차단)
+    v32 수정:
+      1. termination_height: 0.155 → 0.168 (현재 equilibrium 0.164m 위로 강제)
+         → 로봇이 0.168m 이상 유지 안 하면 종료 → alive=8.0으로 강한 유지 동기
+      2. rew_scale_body_height: 8.0 → 12.0 (높이 보상 강화로 0.177m 유인 증가)
+      3. 중복 non_foot_contact 정의 버그 수정 (-8.0이 -30.0을 덮어쓰던 문제)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.155
+    termination_height: float = 0.168  # v31:0.155 → v32:0.168 (sinking 방지)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
@@ -34,18 +32,17 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 12.0   # v30:6.0 → v31:12.0 (1,2,3,8 piecewise, 4발=12.0)
 
-    # === 높이 보상 유지 ===
+    # === 높이 보상 강화 ===
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 8.0
+    rew_scale_body_height: float = 12.0  # v31:8.0 → v32:12.0 (높이 유인 강화)
 
     # === 무릎 서기 차단 강화 ===
-    rew_scale_non_foot_contact: float = -30.0  # v30:-8.0 → v31:-30.0
+    rew_scale_non_foot_contact: float = -30.0  # v30:-8.0 → v31:-30.0 (버그 수정: 중복 정의 제거)
 
     # === stand_still 비활성 유지 ===
     rew_scale_stand_still: float = 0.0
 
     # === 자세 패널티 ===
-    rew_scale_non_foot_contact: float = -8.0
     rew_scale_knee_height_stance: float = -30.0
     knee_stance_height_threshold: float = 0.06
     rew_scale_knee_angle: float = -3.0

@@ -5,27 +5,23 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v32 — termination_height 상향으로 높이 sinking 해결.
+    """Stage 1: 서기 학습 v33 — termination_height 복구 + joint_default 강화로 sinking 해결.
 
-    v31b 문제:
-      1. body_height 0.181m → 0.164m으로 가라앉아 plateau (목표 0.177m 미달)
-      2. stance4 ~73%에서 수렴 (entropy 급감으로 local optimum 도달)
-      3. termination_height=0.155m이 너무 낮아 0.164m에서도 alive 보상 full 획득
+    v32/v32b 실패 분석:
+      - termination_height=0.168m > 자연 평형 0.164m
+      - 에피소드 평균 1.37초(68 steps)만에 조기종료 → 사실상 99% 실패
+      - term_ratio 1.6%는 스텝당 비율, 실제 에피소드 조기종료율은 ~99%
 
-    v32 수정:
-      1. termination_height: 0.155 → 0.168 (현재 equilibrium 0.164m 위로 강제)
-         → 로봇이 0.168m 이상 유지 안 하면 종료 → alive=8.0으로 강한 유지 동기
-      2. rew_scale_body_height: 8.0 유지 (12.0은 높이 신호가 발 접지 학습 압도 → v32 실패)
-      3. 중복 non_foot_contact 정의 버그 수정 (-8.0이 -30.0을 덮어쓰던 문제)
-
-    v32b 수정 (v32 → v32b):
-      - rew_scale_body_height: 12.0 → 8.0 복구 (v32에서 stance4 1.2%로 붕괴 확인)
-      - termination_height=0.168m는 유지 (높이 강제 효과 확인됨)
+    v33 방향: termination_height를 자연 평형 아래로 낮춰 에피소드 길이 복구
+      - termination_height: 0.168 → 0.150 (v31b 0.155보다도 낮춰 안전 마진 확보)
+      - rew_scale_joint_default: -1.0 → -5.0 (관절 default 유지 강화 → sinking 억제)
+      - rew_scale_shoulder_default: -8.0 유지
+      - 나머지 v31b 설계 유지 (발 접지, 무릎 패널티 등)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.168  # v31:0.155 → v32:0.168 (sinking 방지)
+    termination_height: float = 0.150  # v32b:0.168 → v33:0.150 (에피소드 복구)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
@@ -67,7 +63,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     # === 형상 패널티 (foot_spread 계열 제거) ===
     rew_scale_shoulder_default: float = -8.0
-    rew_scale_joint_default: float = -1.0
+    rew_scale_joint_default: float = -5.0  # v31b:-1.0 → v33:-5.0 (sinking 억제)
     rew_scale_foot_spread: float = 0.0        # v26:-3 → v27:0 (가라앉기 인센티브 제거)
     rew_scale_foot_side_span: float = 0.0     # v26:-3 → v27:0 (동일 이유)
 

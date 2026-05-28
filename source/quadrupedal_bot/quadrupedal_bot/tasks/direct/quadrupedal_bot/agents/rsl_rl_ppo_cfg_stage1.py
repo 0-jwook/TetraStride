@@ -5,12 +5,12 @@ from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlPpoActorCriticCfg, R
 
 @configclass
 class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
-    """Stage 1 (서기) PPO v30 — kp=80 + Gaussian 높이 보상."""
+    """Stage 1 (서기) PPO v31 — 무릎 서기 차단 + 1,2,3,8 발접지 보상."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v30"
+    experiment_name = "spot_micro_stance_v31"
 
     resume = False
 

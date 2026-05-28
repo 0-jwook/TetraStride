@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 v35 — leg_extension 수식 수정 (Gaussian→Laplace).
+    """Stage 1: 서기 학습 v36 — alive 축소 + leg_extension 강화로 per-step 품질 지배.
 
     v33 실패 원인 분석:
       - ep_len=74 plateau (목표 1000 steps 미달)
@@ -32,7 +32,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
     # === 주요 양의 보상 ===
-    rew_scale_alive: float = 8.0
+    rew_scale_alive: float = 1.0   # v36: 8.0→1.0 (alive 지배 제거, per-step 품질이 지배하도록)
     rew_scale_upright: float = 6.0
     rew_scale_foot_contact: float = 12.0   # v30:6.0 → v31:12.0 (1,2,3,8 piecewise, 4발=12.0)
 
@@ -45,7 +45,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # 4발 개별 Gaussian 합산 → max 4×1.0×scale = 4×2.0 = 8.0
     target_leg_extension: float = 0.177
     sigma_leg_extension: float = 0.05   # v35: 0.02→0.05 (exp(-|err|/σ), body_height와 동일 계열)
-    rew_scale_leg_extension: float = 2.0
+    rew_scale_leg_extension: float = 5.0   # v36: 2.0→5.0 (4발 합산 max 20.0)
 
     # === 무릎 서기 차단 강화 ===
     rew_scale_non_foot_contact: float = -30.0  # v30:-8.0 → v31:-30.0 (버그 수정: 중복 정의 제거)

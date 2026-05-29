@@ -47,11 +47,11 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.18),  # v34: 0.22→0.18 (실제 서기 높이 0.176m, 초기 낙하 44mm→4mm)
+        pos=(0.0, 0.0, 0.15),  # new-v8: 최대 굽힘 시작 (knee=-2.6, 물리적 최저 자세)
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,
-            ".*_foot": -1.48,   # -1.55→-1.48: 발끝 X=0 (힙 직하방), 지지중심=CoM → 전방 기울림 해소
+            ".*_foot": -2.59,   # new-v8: 관절 하한(-2.6) 직전, 물리적 최대 굽힘
         },
         joint_vel={".*": 0.0},
     ),

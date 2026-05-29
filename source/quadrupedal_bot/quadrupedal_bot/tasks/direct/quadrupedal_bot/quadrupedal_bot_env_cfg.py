@@ -137,6 +137,17 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     sigma_leg_extension: float = 0.02     # Gaussian 폭 (작을수록 타이트)
     rew_scale_leg_extension: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
 
+    # 발-어깨 수평 정렬 보상 (world frame XY, v37)
+    # 발이 어깨 바로 아래에 위치할수록 보상 → exp(-XY거리 / sigma)
+    sigma_foot_alignment: float = 0.08    # 8cm 허용 (hip_flex offset ~5.5cm 포함)
+    rew_scale_foot_alignment: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
+
+    # 다리별 수직 거리 보상 (new-v8): 어깨-발 수직 거리, 길수록 보상 (쪼그림→서기)
+    rew_scale_per_leg_ext: float = 0.0    # 4발 합산 × scale, max=4×0.25×scale
+
+    # 무릎 높이 보상 (new-v8): foot_link(무릎) 높이, 높을수록 보상 (무릎닿임 억제)
+    rew_scale_knee_clearance: float = 0.0  # 4발 합산 × scale, max=4×0.15×scale
+
     # --- Stage1.5: 제자리 발 들기 모드 ---
     # True이면 gait/air_time/foot_height/swing 보상을 cmd_has_vel_gate 없이 항상 적용
     # cmd=0인 제자리 학습에서 발 들기 보상을 활성화하기 위해 필요

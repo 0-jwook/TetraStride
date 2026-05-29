@@ -24,6 +24,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         self._foot_ids, _ = self.contact_sensor.find_bodies(".*foot_link")
         self._foot_body_ids_robot, _ = self.robot.find_bodies(".*foot_link")
+        self._hip_body_ids_robot, _ = self.robot.find_bodies(".*_leg_link")       # hip_flex 조인트 위치
+        self._shoulder_body_ids_robot, _ = self.robot.find_bodies(".*shoulder_link")  # 어깨 body (수직거리 기준)
         self._shoulder_ids, _ = self.robot.find_joints(".*_shoulder")
         self._knee_ids, _ = self.robot.find_joints(".*_foot")   # URDF "foot" joint = knee joint
         self._leg_ids, _ = self.robot.find_joints(".*_leg")     # thigh (hip flex/ext) joint
@@ -366,9 +368,32 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _knee_a = self.joint_pos[:, self._knee_ids]  # [N, 4]
         _leg_ext = 0.1075 * torch.cos(_leg_a) + 0.130 * torch.cos(_leg_a + _knee_a)  # [N, 4]
         _ext_err = (_leg_ext - self.cfg.target_leg_extension).abs()
+        # new-v5: min→sum 복귀 (non_foot_contact 5N으로 마스킹 방지됨, min은 stance4 억제 부작용)
         rew_leg_extension = (
             torch.exp(-_ext_err / self.cfg.sigma_leg_extension).sum(dim=1)
             * self.cfg.rew_scale_leg_extension
+        )
+
+        # Per-leg vertical distance reward (new-v9): FK 기반 어깨→발끝 수직 거리
+        # shoulder ≈ hip_flex (Z 동일), leg_ext = 0.1075×cos(leg)+0.130×cos(leg+knee)
+        # 발이 공중에 있어도 정확히 측정, 쪼그림→서기로 갈수록 증가
+        _vert   = _leg_ext.clamp(min=0.0, max=0.22)  # [N, 4], FK로 이미 계산됨
+        rew_per_leg_ext = _vert.sum(dim=1) * self.cfg.rew_scale_per_leg_ext
+
+        # Knee clearance reward (new-v8): 무릎(foot_link) 높이 — 높을수록 보상
+        # 무릎이 땅에 닿으면 0, 서 있을수록 증가 → 무릎닿임 억제 + 서기 유도
+        _knee_z = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, 2]  # [N, 4] foot_link = knee body
+        rew_knee_clearance = _knee_z.clamp(min=0.0, max=0.15).sum(dim=1) * self.cfg.rew_scale_knee_clearance
+
+        # Foot below hip alignment reward (world frame XY, new-v3)
+        # leg_link(hip_flex 조인트) 기준 foot_link 수평(XY) 거리 → 발이 hip 바로 아래에 위치할수록 보상
+        # shoulder_link는 5.5cm 측면 오프셋이 있어 기준점으로 부적합 → leg_link 사용
+        _hip_xy  = self.robot.data.body_pos_w[:, self._hip_body_ids_robot, :2]      # [N, 4, 2]
+        _foot_xy = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :2]     # [N, 4, 2]
+        _align_err = torch.norm(_foot_xy - _hip_xy, dim=2)                          # [N, 4]
+        rew_foot_alignment = (
+            torch.exp(-_align_err / self.cfg.sigma_foot_alignment).sum(dim=1)
+            * self.cfg.rew_scale_foot_alignment
         )
 
         # Body height reward:
@@ -584,6 +609,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/leg_extension": rew_leg_extension.mean().item(),
                 "diag/leg_ext_mean": _leg_ext.mean().item(),
                 "diag/leg_ext_min":  _leg_ext.min().item(),
+                "rew/per_leg_ext": rew_per_leg_ext.mean().item(),
+                "diag/vert_dist_mean": _vert.mean().item(),   # FK 기반 다리별 수직거리
+                "rew/knee_clearance": rew_knee_clearance.mean().item(),
+                "diag/knee_z_clearance": _knee_z.mean().item(),
+                "rew/foot_alignment": rew_foot_alignment.mean().item(),
+                "diag/foot_align_err": _align_err.mean().item(),
                 "rew/body_height": rew_body_height.mean().item(),
                 "rew/yaw_error": rew_ang_vel_z.mean().item(),
                 "diag/body_height_mean": self.robot.data.root_pos_w[:, 2].mean().item(),
@@ -653,7 +684,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/leg_angle_mean": leg_angle.mean().item(),
             }
 
-        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_non_foot_contact + rew_joint_default
+        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_foot_alignment + rew_non_foot_contact + rew_joint_default
                 + rew_shoulder_default + rew_foot_side_span
                 + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces

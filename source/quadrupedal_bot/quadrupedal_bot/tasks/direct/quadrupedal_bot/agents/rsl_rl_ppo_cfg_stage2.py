@@ -8,14 +8,14 @@ class PPORunnerCfgStage2(RslRlOnPolicyRunnerCfg):
     """Standing v3c: body_height exp 보상 + 자세 진단 로그 추가."""
 
     num_steps_per_env = 24
-    max_iterations = 2000
+    max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_v3c"
+    experiment_name = "spot_micro_trotinplace_new_v1"
 
     resume = True
-    load_run = "2026-05-22_01-32-51"
-    load_checkpoint = "model_600.pt"
-    load_experiment_name = "spot_micro_stance_v3b"
+    load_run = "2026-05-30_02-18-18"
+    load_checkpoint = "model_2999.pt"
+    load_experiment_name = "spot_micro_stance_new_v17"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

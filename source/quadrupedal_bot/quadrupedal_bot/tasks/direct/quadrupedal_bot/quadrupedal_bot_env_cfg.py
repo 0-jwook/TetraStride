@@ -43,6 +43,7 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     action_scale: float = 0.35
     action_smoothing: float = 0.8
     init_noise_scale: float = 0.03   # 초기화 관절 노이즈 (0.1→0.03: 0.7N·m로 복원 가능한 범위)
+    init_crouch_prob: float = 0.0    # 쪼그린 자세 시작 비율 (0=항상 서기, 1=항상 쪼그림, 0.5=반반)
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.2, 0.6)
@@ -141,6 +142,9 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     # 발이 어깨 바로 아래에 위치할수록 보상 → exp(-XY거리 / sigma)
     sigma_foot_alignment: float = 0.08    # 8cm 허용 (hip_flex offset ~5.5cm 포함)
     rew_scale_foot_alignment: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
+
+    # 서기 품질 보상 (new-v14): 곱셈 소프트 AND (높이×균형×접촉×뻗음), 최대 scale/step
+    rew_scale_standing_quality: float = 0.0
 
     # 다리별 수직 거리 보상 (new-v8): 어깨-발 수직 거리, 길수록 보상 (쪼그림→서기)
     rew_scale_per_leg_ext: float = 0.0    # 4발 합산 × scale, max=4×0.25×scale

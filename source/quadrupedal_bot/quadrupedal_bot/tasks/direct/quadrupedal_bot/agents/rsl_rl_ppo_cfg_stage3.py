@@ -44,15 +44,15 @@ class PPORunnerCfgStage3(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
-    """Stage 3: WalkFwd — v7 TrotInplace 전이학습 (gait=7.64, vel=0.10m/s, height=16.4cm)."""
+    """Stage 3: WalkFwd new_v1 — new TrotInplace 전이학습."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_fwd_v2"
+    experiment_name = "spot_micro_walk_fwd_new_v1"
 
     resume = True
-    load_run = "2026-05-27_10-22-30"
+    load_run = "2026-05-30_04-01-34"
     load_checkpoint = "model_2999.pt"
     load_experiment_name = "spot_micro_trot_inplace_v7"
 
@@ -83,17 +83,17 @@ class PPORunnerCfgStage4(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
-    """Stage 4: WalkAllDir — v2 WalkFwd 전이학습."""
+    """Stage 4: WalkAllDir new_v1 — new WalkFwd 전이학습."""
 
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_walk_alldir_v2"
+    experiment_name = "spot_micro_walk_alldir_new_v1"
 
     resume = True
-    load_run = "2026-05-27_12-12-48"
+    load_run = "2026-05-30_05-51-10"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_fwd_v2"
+    load_experiment_name = "spot_micro_walk_fwd_new_v1"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,
@@ -122,17 +122,17 @@ class PPORunnerCfgStage5(RslRlOnPolicyRunnerCfg):
 
 @configclass
 class PPORunnerCfgStage6(RslRlOnPolicyRunnerCfg):
-    """Stage 5: InplaceRot — v2 WalkAllDir 전이학습."""
+    """Stage 5: InplaceRot new_v1 — new WalkAllDir 전이학습."""
 
     num_steps_per_env = 32
-    max_iterations = 2000
+    max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_inplace_rot_v2"
+    experiment_name = "spot_micro_inplace_rot_new_v1"
 
     resume = True
-    load_run = "2026-05-27_14-04-34"
+    load_run = "2026-05-30_07-45-52"
     load_checkpoint = "model_2999.pt"
-    load_experiment_name = "spot_micro_walk_alldir_v2"
+    load_experiment_name = "spot_micro_walk_alldir_new_v1"
 
     policy = RslRlPpoActorCriticCfg(
         init_noise_std=1.0,

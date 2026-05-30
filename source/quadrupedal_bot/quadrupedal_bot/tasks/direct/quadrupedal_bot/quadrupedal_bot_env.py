@@ -454,6 +454,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _bonus  = (num_contacts >= 4).float() * 5.0
         rew_foot_contact = (_linear + _bonus) * (self.cfg.rew_scale_foot_contact / 8.0)
 
+        # Standing Quality reward (new-v14): 곱셈 소프트 AND
+        # 높이·균형·4발접촉·다리뻗음 모두 동시에 만족할 때 최대, 하나라도 나쁘면 전체 감소
+        _h_q   = (self.robot.data.root_pos_w[:, 2] / self.cfg.target_body_height).clamp(0.0, 1.0)
+        _u_q   = torch.exp(-tilt / self.cfg.orientation_sigma)
+        _c_q   = (num_contacts / 4.0).clamp(0.0, 1.0)
+        _e_q   = (_leg_ext / self.cfg.target_leg_extension).clamp(0.0, 1.0).mean(dim=1)
+        _quality = _h_q * _u_q * _c_q * _e_q
+        rew_standing_quality = _quality * self.cfg.rew_scale_standing_quality
+
         # Foot spread penalty: 양방향 — 너무 모이거나 너무 벌어지는 것 모두 패널티
         foot_pos_world = self.robot.data.body_pos_w[:, self._foot_body_ids_robot, :]  # [N, 4, 3]
         foot_y_world = foot_pos_world[:, :, 1]  # [N, 4] lateral (Y) positions
@@ -592,6 +601,8 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/air_time": _air_time_log.mean().item(),
                 "rew/air_time_var": rew_air_time_var.mean().item(),
                 "rew/upright": rew_upright.mean().item(),
+                "rew/standing_quality": rew_standing_quality.mean().item(),
+                "diag/quality_score": _quality.mean().item(),
                 "rew/gravity": rew_gravity_log.mean().item(),
                 "rew/foot_slip": rew_foot_slip.mean().item(),
                 "rew/joint_default": rew_joint_default.mean().item(),
@@ -684,7 +695,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/leg_angle_mean": leg_angle.mean().item(),
             }
 
-        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_foot_alignment + rew_non_foot_contact + rew_joint_default
+        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_standing_quality + rew_foot_alignment + rew_non_foot_contact + rew_joint_default
                 + rew_shoulder_default + rew_foot_side_span
                 + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
@@ -741,12 +752,26 @@ class QuadrupedalBotEnv(DirectRLEnv):
             zero_mask = torch.rand(n, device=self.device) < self.cfg.zero_command_prob
             self._commands[env_ids[zero_mask]] = 0.0
 
-        joint_pos = self.robot.data.default_joint_pos[env_ids]
+        joint_pos = self.robot.data.default_joint_pos[env_ids].clone()
         joint_pos = joint_pos + torch.randn_like(joint_pos) * self.cfg.init_noise_scale
         joint_vel = torch.zeros_like(joint_pos)
 
-        root_state = self.robot.data.default_root_state[env_ids]
+        root_state = self.robot.data.default_root_state[env_ids].clone()
         root_state[:, :3] += self.scene.env_origins[env_ids]
+
+        # 초기 자세 랜덤화: init_crouch_prob 비율은 쪼그린 자세, 나머지는 서기 자세
+        # default_joint_pos = -1.48 (서기, PD 스프링 기준점) — 쪼그림 에피소드만 knee 덮어씀
+        # 서기 에피소드: action=0 → kp=80 스프링이 자동으로 -1.48 유지 (일어서기 보조)
+        # 쪼그림 에피소드: knee=-2.59로 강제, 스프링이 일어서려는 힘 제공 → 탈출 학습
+        if self.cfg.init_crouch_prob > 0.0:
+            crouch_mask = torch.rand(n, device=self.device) < self.cfg.init_crouch_prob
+            if crouch_mask.any():
+                knee_idx = torch.tensor(self._knee_ids, device=self.device)
+                crouch_rows = crouch_mask.nonzero(as_tuple=True)[0]
+                joint_pos[crouch_rows[:, None], knee_idx] = -2.59
+                # 몸체 높이를 쪼그린 높이로 낮춤 (0.18 → 0.15)
+                root_state[crouch_mask, 2] -= 0.03
+
         self.robot.write_root_pose_to_sim(root_state[:, :7], env_ids)
         self.robot.write_root_velocity_to_sim(root_state[:, 7:], env_ids)
         self.robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)

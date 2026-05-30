@@ -17,7 +17,7 @@ class PPORunnerCfgStage1(RslRlOnPolicyRunnerCfg):
     num_steps_per_env = 32
     max_iterations = 3000
     save_interval = 200
-    experiment_name = "spot_micro_stance_new_v10"
+    experiment_name = "spot_micro_stance_new_v17"
 
     resume = False
 

@@ -5,35 +5,40 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 new-v10 — per_leg_ext 스케일 15→50으로 대폭 강화.
+    """Stage 1: 서기 학습 new-v17 — 보상 구조 근본 단순화 (균형+높이만).
 
-    new-v9 실패 (iter 1163):
-      - stance4=85%, ep_len=999 달성했지만 body_height=0.067m (납작 눕기)
-      - 로봇이 termination_height=4cm 위에 납작 누워 stance4+ep_len 모두 달성
-      - per_leg_ext scale=15: 누운 상태 3.1/step vs 선 상태 10.6/step → delta 7.5/step
-        → 누운 안정성 이득이 7.5/step 차이를 압도
+    핵심 재설계:
+      - foot_contact 제거: 물리적으로 높이를 유지하면 발이 자동으로 닿음
+        → foot_contact 보상이 오히려 크라우치 유도했음
+      - standing_quality/per_leg_ext 제거: 단순화
+      - 핵심만: upright(균형) + body_height(높이) → 이 둘만 만족하면 올바른 서기
 
-    new-v10 수정:
-      - per_leg_ext: 15.0 → 50.0
-        (누운 10.2/step vs 선 35.4/step → delta 25.2/step로 서는 것이 압도적 유리)
+    보상 구조 (6개, 이전 20개에서 축소):
+      - upright: 20.0   (균형, 핵심)
+      - body_height: 15.0 (높이 0.177m, 핵심)
+      - alive: 1.0
+      - non_foot_contact: -30.0 (무릎 딛기 차단)
+      - lin_vel_xy: -5.0 (제자리 유지)
+      - base_drift: -8.0 (위치 드리프트)
+      + 보조: shoulder_default(-15), joint_default(-8), gravity(-5), etc.
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.040  # new-v9: 0.100→0.040 (최대굽힘 자세 허용, knee=-2.59 시 ~5cm)
+    termination_height: float = 0.100  # new-v15: 0.040→0.100 복구 (크라우치 방지)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
     # === 주요 양의 보상 ===
-    rew_scale_alive: float = 1.0   # v36: 8.0→1.0 (alive 지배 제거, per-step 품질이 지배하도록)
-    rew_scale_upright: float = 6.0
-    rew_scale_foot_contact: float = 12.0   # new-v8: 20→12 복귀 (per_leg_ext가 주도)
+    rew_scale_alive: float = 1.0
+    rew_scale_upright: float = 20.0  # new-v17: 균형이 핵심 (6→20)
+    rew_scale_foot_contact: float = 0.0  # new-v17: 제거 (높이 유지하면 물리적으로 발 닿음)
 
-    # === 높이: root_pos_w 기반 제거, FK 다리 뻗음 보상으로 대체 ===
+    # === 높이 보상 (핵심) ===
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 0.0   # new-v8: 제거 (per_leg_ext로 통합)
+    rew_scale_body_height: float = 15.0  # new-v17: 재활성화 + 강화 (핵심 보상)
 
     # === 다리 뻗음 보상 (v34 신규) ===
     # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee), 목표 0.177m
@@ -59,7 +64,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_ang_vel_xy: float = -0.5
     rew_scale_lin_vel_z: float = -5.0
     rew_scale_ang_vel_z: float = -5.0
-    rew_scale_lin_vel_xy: float = -8.0
+    rew_scale_lin_vel_xy: float = -5.0  # new-v17: 제자리 유지
     rew_scale_base_drift: float = -8.0
 
     # === 동작 품질 ===
@@ -69,7 +74,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
 
     # === 형상 패널티 (foot_spread 계열 제거) ===
-    rew_scale_shoulder_default: float = -8.0
+    rew_scale_shoulder_default: float = -15.0  # new-v16: -8.0→-15.0 (어깨 벌어짐 강력 억제)
     rew_scale_joint_default: float = -8.0  # v37: -5.0→-8.0 (knee 과굽힘 억제 강화)
     rew_scale_foot_spread: float = 0.0        # v26:-3 → v27:0 (가라앉기 인센티브 제거)
     rew_scale_foot_side_span: float = 0.0     # v26:-3 → v27:0 (동일 이유)
@@ -86,7 +91,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # 발이 어깨 바로 아래 위치할수록 보상 증가 (sigma=0.08m, 5.5cm hip_flex offset 포함)
     sigma_foot_alignment: float = 0.08
     rew_scale_foot_alignment: float = 0.0   # 비활성
-    rew_scale_per_leg_ext: float = 50.0     # new-v10: 15→50 (누운자세 대비 선자세 delta 25/step)
+    rew_scale_per_leg_ext: float = 0.0      # new-v17: 제거 (body_height가 대체)
+    rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)
     rew_scale_knee_clearance: float = 5.0   # new-v8: 무릎 높이 보상 (max 4×0.15×5=3/step)
 
     # === 기타 ===
@@ -95,3 +101,4 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     freeze_gait_phase: bool = True
     orientation_sigma: float = 0.10
     action_scale: float = 0.10
+    init_crouch_prob: float = 0.0   # new-v15: 쪼그림 시작 비활성 (서기 자세만)

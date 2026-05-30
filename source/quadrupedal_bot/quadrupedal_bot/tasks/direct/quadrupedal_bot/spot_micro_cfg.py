@@ -47,11 +47,11 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.15),  # new-v8: 최대 굽힘 시작 (knee=-2.6, 물리적 최저 자세)
+        pos=(0.0, 0.0, 0.18),  # new-v15: 올바른 서기 자세로 복귀 (0.15→0.18)
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,
-            ".*_foot": -2.59,   # new-v8: 관절 하한(-2.6) 직전, 물리적 최대 굽힘
+            ".*_foot": -1.48,   # new-v12: -2.59→-1.48 복원 (PD 스프링 기준점=서기, action=0이 서기 보조)
         },
         joint_vel={".*": 0.0},
     ),

@@ -5,40 +5,37 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 new-v17 — 보상 구조 근본 단순화 (균형+높이만).
+    """Stage 1: 서기 학습 B-v6 — Min-limb 보상 + σ 완화 + 소프트 종료.
 
-    핵심 재설계:
-      - foot_contact 제거: 물리적으로 높이를 유지하면 발이 자동으로 닿음
-        → foot_contact 보상이 오히려 크라우치 유도했음
-      - standing_quality/per_leg_ext 제거: 단순화
-      - 핵심만: upright(균형) + body_height(높이) → 이 둘만 만족하면 올바른 서기
-
-    보상 구조 (6개, 이전 20개에서 축소):
-      - upright: 20.0   (균형, 핵심)
-      - body_height: 15.0 (높이 0.177m, 핵심)
-      - alive: 1.0
-      - non_foot_contact: -30.0 (무릎 딛기 차단)
-      - lin_vel_xy: -5.0 (제자리 유지)
-      - base_drift: -8.0 (위치 드리프트)
-      + 보조: shoulder_default(-15), joint_default(-8), gravity(-5), etc.
+    딥리서치 기반 B-v6 핵심 변경:
+      1. Min-limb joint match: 전역 합산 → 최악 다리 기준 (최악 다리가 전체 보상 결정)
+         scale: 15→60 (per-limb max=3.0, 동일한 최대 보상 180/step 유지)
+      2. σ: 0.05→0.10 (초기 학습 신호 확보, 3°→5.7° 허용)
+      3. 소프트 종료: shoulder 0.15→0.30, drift 0.08→0.20
+         (경계선 케이스 탐색 허용, -40 패널티가 실질적 억제 담당)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.100  # new-v15: 0.040→0.100 복구 (크라우치 방지)
+    termination_height: float = 0.145  # new-v22: 0.120→0.145 (0.126m 크라우치 전략 차단)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
-    # === 주요 양의 보상 ===
+    # === B 접근법 핵심 보상 ===
     rew_scale_alive: float = 1.0
-    rew_scale_upright: float = 20.0  # new-v17: 균형이 핵심 (6→20)
-    rew_scale_foot_contact: float = 0.0  # new-v17: 제거 (높이 유지하면 물리적으로 발 닿음)
+    rew_scale_upright: float = 22.0  # B-v4: 30→22 (upright 강화가 어깨 벌리기 악화시킴)
+    rew_scale_foot_contact: float = 0.0  # 제거 (관절 매칭이 높이 보장)
 
-    # === 높이 보상 (핵심) ===
+    # B-v6: Min-limb 관절 매칭 보상 (per-limb min, scale 상향)
+    sigma_joint_match: float = 0.10   # 0.05→0.10: 5.7° 허용 (초기 학습 신호 확보)
+    rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step (min-limb 보상, 동일 최대치)
+
+    # === 높이 보상 (보조) ===
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 15.0  # new-v17: 재활성화 + 강화 (핵심 보상)
+    rew_scale_body_height: float = 10.0  # 보조적 높이 신호
+    asymmetric_height_reward: bool = True  # 목표 이하만 패널티
 
     # === 다리 뻗음 보상 (v34 신규) ===
     # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee), 목표 0.177m
@@ -63,9 +60,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_gravity: float = -5.0
     rew_scale_ang_vel_xy: float = -0.5
     rew_scale_lin_vel_z: float = -5.0
-    rew_scale_ang_vel_z: float = -5.0
-    rew_scale_lin_vel_xy: float = -5.0  # new-v17: 제자리 유지
-    rew_scale_base_drift: float = -8.0
+    rew_scale_ang_vel_z: float = -10.0  # new-v18: 요 회전 억제 강화
+    rew_scale_lin_vel_xy: float = -200.0  # new-v23: -100→-200 (vel 정체 해결, 2배 추가 강화)
+    rew_scale_base_drift: float = -60.0  # new-v26: -20→-60 (스텔스 드리프트 차단, 3배)
 
     # === 동작 품질 ===
     rew_scale_action_rate: float = -0.05
@@ -74,7 +71,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
 
     # === 형상 패널티 (foot_spread 계열 제거) ===
-    rew_scale_shoulder_default: float = -15.0  # new-v16: -8.0→-15.0 (어깨 벌어짐 강력 억제)
+    rew_scale_shoulder_default: float = -40.0  # new-v31: -30→-40 (어깨 벌리기 강력 차단)
     rew_scale_joint_default: float = -8.0  # v37: -5.0→-8.0 (knee 과굽힘 억제 강화)
     rew_scale_foot_spread: float = 0.0        # v26:-3 → v27:0 (가라앉기 인센티브 제거)
     rew_scale_foot_side_span: float = 0.0     # v26:-3 → v27:0 (동일 이유)
@@ -90,7 +87,11 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # world frame에서 shoulder_link와 foot_link의 XY 수평 거리 측정
     # 발이 어깨 바로 아래 위치할수록 보상 증가 (sigma=0.08m, 5.5cm hip_flex offset 포함)
     sigma_foot_alignment: float = 0.08
-    rew_scale_foot_alignment: float = 0.0   # 비활성
+    rew_scale_foot_alignment: float = 3.0   # new-v18: 재활성화 (leg_link 기준, 발-어깨 정렬)
+    sigma_foot_alignment: float = 0.05      # new-v18: 0.08→0.05 (더 타이트한 정렬)
+    termination_drift_m: float = 0.20       # B-v6: 0.08→0.20m (소프트화, -60 패널티가 담당)
+    termination_shoulder_rad: float = 0.30  # B-v6: 0.15→0.30rad (소프트화, -40 패널티가 담당)
+    termination_tilt_cos: float = -0.940    # new-v28: 45°→20° 강화 (cos(20°)=-0.940)
     rew_scale_per_leg_ext: float = 0.0      # new-v17: 제거 (body_height가 대체)
     rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)
     rew_scale_knee_clearance: float = 5.0   # new-v8: 무릎 높이 보상 (max 4×0.15×5=3/step)

@@ -44,6 +44,14 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     action_smoothing: float = 0.8
     init_noise_scale: float = 0.03   # 초기화 관절 노이즈 (0.1→0.03: 0.7N·m로 복원 가능한 범위)
     init_crouch_prob: float = 0.0    # 쪼그린 자세 시작 비율 (0=항상 서기, 1=항상 쪼그림, 0.5=반반)
+    termination_drift_m: float = 999.0  # 드리프트 종료 거리 (기본=비활성, stance_cfg에서 설정)
+    termination_tilt_cos: float = -0.707  # 기울기 종료 cos값 (기본=45°, cos(45°)=-0.707)
+    termination_shoulder_rad: float = 999.0  # 어깨 벌리기 종료 (기본=비활성, B-v4에서 설정)
+    asymmetric_height_reward: bool = False  # 비대칭 높이 보상 (목표 이하만 패널티, new-v30)
+
+    # B 접근법: 관절 매칭 보상 파라미터
+    sigma_joint_match: float = 0.15   # Laplace 폭 (rad) — 15° 허용
+    rew_scale_joint_match: float = 0.0  # 기본 비활성, stance_cfg에서 설정
 
     # --- velocity commands ---
     cmd_lin_vel_x_range: tuple = (0.2, 0.6)

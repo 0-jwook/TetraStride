@@ -401,8 +401,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
         #   scale < 0: 단방향 페널티 — target 이하일 때만 선형 패널티 (자연 높이 허용)
         body_height = self.robot.data.root_pos_w[:, 2]
         if self.cfg.rew_scale_body_height >= 0:
-            height_error = (body_height - self.cfg.target_body_height).abs()
-            rew_body_height = torch.exp(-height_error / 0.05) * self.cfg.rew_scale_body_height
+            if self.cfg.asymmetric_height_reward:
+                # new-v30: 비대칭 보상 — 목표 이하만 패널티, 이상이면 최대 보상 유지
+                # → 너무 낮으면 패널티, 높으면 패널티 없음 (상향 유인만 존재)
+                height_deficit = (self.cfg.target_body_height - body_height).clamp(min=0.0)
+                rew_body_height = torch.exp(-height_deficit / 0.05) * self.cfg.rew_scale_body_height
+            else:
+                height_error = (body_height - self.cfg.target_body_height).abs()
+                rew_body_height = torch.exp(-height_error / 0.05) * self.cfg.rew_scale_body_height
         else:
             height_deficit = (self.cfg.target_body_height - body_height).clamp(min=0)
             rew_body_height = height_deficit * self.cfg.rew_scale_body_height
@@ -431,6 +437,23 @@ class QuadrupedalBotEnv(DirectRLEnv):
         )
         all_joint_excess = (all_joint_dev - 0.05).clamp(min=0.0)
         rew_joint_default = torch.sum(torch.square(all_joint_excess), dim=1) * self.cfg.rew_scale_joint_default
+
+        # B 접근법: 관절 매칭 보상 (Reference Motion Tracking)
+        # q_target = default_joint_pos (FK로 계산된 올바른 서기 자세)
+        # reward = Σ exp(-|q_i - q_target_i| / sigma) → 목표 자세에 가까울수록 최대
+        # 해킹 불가: 관절이 목표에 맞으면 FK에 의해 높이/발위치/자세 자동으로 올바름
+        if self.cfg.rew_scale_joint_match > 0:
+            _joint_err = torch.abs(self.joint_pos - self.robot.data.default_joint_pos)  # [N, 12]
+            # Per-limb min: 각 다리의 3관절(shoulder+leg+knee) 합산 후 최솟값 → 최악 다리가 전체 보상 결정
+            _limb_scores = torch.stack([
+                torch.exp(-_joint_err[:, [self._shoulder_ids[i], self._leg_ids[i], self._knee_ids[i]]] / self.cfg.sigma_joint_match).sum(dim=1)
+                for i in range(4)
+            ], dim=1)  # [N, 4], each limb max = 3.0
+            _joint_match = _limb_scores.min(dim=1).values  # [N], worst limb dominates
+            rew_joint_match = _joint_match * self.cfg.rew_scale_joint_match
+        else:
+            _limb_scores = torch.zeros(self.num_envs, 4, device=self.device)
+            rew_joint_match = torch.zeros(self.num_envs, device=self.device)
 
         # 어깨 관절 전용 패널티: tripod cheat 방지 (발이 어깨 바로 아래 위치하도록)
         # shoulder joint이 0에서 벗어나면 발이 옆으로 이동 → 강하게 패널티
@@ -558,6 +581,9 @@ class QuadrupedalBotEnv(DirectRLEnv):
             # torque saturation: fraction of joints outputting ≥ 95% of effort_limit
             effort_limit = 10.0  # N·m, leg/foot effort_limit
             torque_sat_ratio = (self.robot.data.applied_torque.abs() >= effort_limit * 0.95).float().mean()
+            # 다리별 토크/접촉력 진단 변수 (딕셔너리 밖에서 선언)
+            _torque_abs = self.robot.data.applied_torque.abs()  # [N, 12]
+            _foot_fz = self.contact_sensor.data.net_forces_w_history[:, 0, self._foot_ids, 2]  # [N, 4]
             # termination cause breakdown
             body_fallen_now = (self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height).float()
             body_tilted_now = (self.robot.data.projected_gravity_b[:, 2] > -0.707).float()
@@ -606,6 +632,12 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/gravity": rew_gravity_log.mean().item(),
                 "rew/foot_slip": rew_foot_slip.mean().item(),
                 "rew/joint_default": rew_joint_default.mean().item(),
+                "rew/joint_match": rew_joint_match.mean().item(),
+                "diag/joint_match_score": (_joint_match / 3.0).mean().item() if self.cfg.rew_scale_joint_match > 0 else 0.0,
+                "diag/limb_score_FL": (_limb_scores[:, 0] / 3.0).mean().item(),
+                "diag/limb_score_FR": (_limb_scores[:, 1] / 3.0).mean().item(),
+                "diag/limb_score_RL": (_limb_scores[:, 2] / 3.0).mean().item(),
+                "diag/limb_score_RR": (_limb_scores[:, 3] / 3.0).mean().item(),
                 "rew/foot_contact": rew_foot_contact.mean().item(),
                 "diag/num_feet_contact": num_contacts.mean().item(),
                 "rew/shoulder_default": rew_shoulder_default.mean().item(),
@@ -619,6 +651,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "rew/contact_forces": rew_contact_forces.mean().item(),
                 "rew/leg_extension": rew_leg_extension.mean().item(),
                 "diag/leg_ext_mean": _leg_ext.mean().item(),
+                # 다리별 FK 길이 (FL=0, FR=1, RL=2, RR=3) — per-leg 진단
+                "diag/leg_ext_FL": _leg_ext[:, 0].mean().item(),
+                "diag/leg_ext_FR": _leg_ext[:, 1].mean().item(),
+                "diag/leg_ext_RL": _leg_ext[:, 2].mean().item(),
+                "diag/leg_ext_RR": _leg_ext[:, 3].mean().item(),
                 "diag/leg_ext_min":  _leg_ext.min().item(),
                 "rew/per_leg_ext": rew_per_leg_ext.mean().item(),
                 "diag/vert_dist_mean": _vert.mean().item(),   # FK 기반 다리별 수직거리
@@ -632,6 +669,26 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/body_height_min": self.robot.data.root_pos_w[:, 2].min().item(),
                 "diag/body_height_std": _height_std.item(),
                 "diag/torque_sat_ratio": torque_sat_ratio.item(),
+                # ── 다리별 hip(leg) 토크 ──────────────────────────────────────
+                "diag/torque_leg_FL": _torque_abs[:, self._leg_ids[0]].mean().item(),
+                "diag/torque_leg_FR": _torque_abs[:, self._leg_ids[1]].mean().item(),
+                "diag/torque_leg_RL": _torque_abs[:, self._leg_ids[2]].mean().item(),
+                "diag/torque_leg_RR": _torque_abs[:, self._leg_ids[3]].mean().item(),
+                # ── 다리별 knee 토크 ─────────────────────────────────────────
+                "diag/torque_knee_FL": _torque_abs[:, self._knee_ids[0]].mean().item(),
+                "diag/torque_knee_FR": _torque_abs[:, self._knee_ids[1]].mean().item(),
+                "diag/torque_knee_RL": _torque_abs[:, self._knee_ids[2]].mean().item(),
+                "diag/torque_knee_RR": _torque_abs[:, self._knee_ids[3]].mean().item(),
+                # ── 앞다리 포화 비율 (가장 중요한 진단) ──────────────────────
+                "diag/torque_sat_leg_FL": (_torque_abs[:, self._leg_ids[0]] >= 9.5).float().mean().item(),
+                "diag/torque_sat_leg_FR": (_torque_abs[:, self._leg_ids[1]] >= 9.5).float().mean().item(),
+                "diag/torque_sat_knee_FL": (_torque_abs[:, self._knee_ids[0]] >= 9.5).float().mean().item(),
+                "diag/torque_sat_knee_FR": (_torque_abs[:, self._knee_ids[1]] >= 9.5).float().mean().item(),
+                # ── 발별 수직 접촉력 ─────────────────────────────────────────
+                "diag/contact_force_FL": _foot_fz[:, 0].abs().mean().item(),
+                "diag/contact_force_FR": _foot_fz[:, 1].abs().mean().item(),
+                "diag/contact_force_RL": _foot_fz[:, 2].abs().mean().item(),
+                "diag/contact_force_RR": _foot_fz[:, 3].abs().mean().item(),
                 "diag/term_height_ratio": body_fallen_now.mean().item(),
                 "diag/term_tilt_ratio": body_tilted_now.mean().item(),
                 "rew/termination": rew_termination_log.mean().item(),
@@ -641,8 +698,22 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "pose/pitch_deg":         _pitch_deg.mean().item(),
                 "pose/tilt_deg":          _tilt_deg.mean().item(),
                 "pose/shoulder_abs_mean": _shoulder_abs.mean().item(),
+                # 어깨별 각도 (FL=0, FR=1, RL=2, RR=3) — per-leg 진단
+                "diag/shoulder_FL": self.joint_pos[:, self._shoulder_ids[0]].abs().mean().item(),
+                "diag/shoulder_FR": self.joint_pos[:, self._shoulder_ids[1]].abs().mean().item(),
+                "diag/shoulder_RL": self.joint_pos[:, self._shoulder_ids[2]].abs().mean().item(),
+                "diag/shoulder_RR": self.joint_pos[:, self._shoulder_ids[3]].abs().mean().item(),
                 "pose/knee_angle_mean":   _knee_mean.mean().item(),
                 "pose/leg_angle_mean":    _leg_mean_all.mean().item(),
+                # ── 다리별 관절 각도 (target: hip=0.83, knee=-1.48) ──────────
+                "diag/hip_FL": self.joint_pos[:, self._leg_ids[0]].mean().item(),
+                "diag/hip_FR": self.joint_pos[:, self._leg_ids[1]].mean().item(),
+                "diag/hip_RL": self.joint_pos[:, self._leg_ids[2]].mean().item(),
+                "diag/hip_RR": self.joint_pos[:, self._leg_ids[3]].mean().item(),
+                "diag/knee_FL": self.joint_pos[:, self._knee_ids[0]].mean().item(),
+                "diag/knee_FR": self.joint_pos[:, self._knee_ids[1]].mean().item(),
+                "diag/knee_RL": self.joint_pos[:, self._knee_ids[2]].mean().item(),
+                "diag/knee_RR": self.joint_pos[:, self._knee_ids[3]].mean().item(),
                 "pose/foot_x_spread":     _foot_x_spread.item(),
                 "pose/stance_4_ratio":    _stance_4_ratio.item(),
                 "pose/load_asymmetry":    _load_asymmetry.item(),
@@ -695,7 +766,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/leg_angle_mean": leg_angle.mean().item(),
             }
 
-        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_standing_quality + rew_foot_alignment + rew_non_foot_contact + rew_joint_default
+        return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_standing_quality + rew_foot_alignment + rew_non_foot_contact + rew_joint_default + rew_joint_match
                 + rew_shoulder_default + rew_foot_side_span
                 + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
@@ -722,9 +793,28 @@ class QuadrupedalBotEnv(DirectRLEnv):
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         body_fallen = self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height
         # 45° 이상 기울어지면 종료: cos(45°)=0.707, proj_gravity_b[z] < -0.707 = 45° 이하 직립
-        body_tilted = self.robot.data.projected_gravity_b[:, 2] > -0.707
+        # 기울기 종료: termination_tilt_cos 파라미터로 조정 (기본 45°=-0.707, 더 엄격하게 설정 가능)
+        body_tilted = self.robot.data.projected_gravity_b[:, 2] > self.cfg.termination_tilt_cos
+        # 드리프트 종료 (new-v19): 시작 위치에서 termination_drift_m 이상 이동하면 종료
+        # 보행 해킹 차단 — 보상으로 막는 게 아닌 하드 제약
+        if self.cfg.termination_drift_m < 999.0:
+            _drift_xy = torch.sqrt(
+                (self.robot.data.root_pos_w[:, 0] - self._start_pos_x) ** 2 +
+                (self.robot.data.root_pos_w[:, 1] - self._start_pos_y) ** 2
+            )
+            body_drifted = _drift_xy > self.cfg.termination_drift_m
+        else:
+            body_drifted = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 
-        terminated = body_fallen | body_tilted
+        # 어깨 벌리기 종료 (B-v4): 어깨 관절이 threshold 이상 벌어지면 즉시 종료
+        # joint_match의 지수함수로는 큰 편차를 막지 못함 → 하드 제약
+        if self.cfg.termination_shoulder_rad < 999.0:
+            shoulder_angles = self.joint_pos[:, self._shoulder_ids].abs()  # [N, 4]
+            shoulder_splayed = (shoulder_angles > self.cfg.termination_shoulder_rad).any(dim=1)
+        else:
+            shoulder_splayed = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
+
+        terminated = body_fallen | body_tilted | body_drifted | shoulder_splayed
         return terminated, time_out
 
     # ------------------------------------------------------------------

@@ -5,14 +5,19 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v6 — Min-limb 보상 + σ 완화 + 소프트 종료.
+    """Stage 1: 서기 학습 B-v7 — Min-limb + σ=0.10 + drift 종료 복원 + yaw 패널티 3배.
 
-    딥리서치 기반 B-v6 핵심 변경:
-      1. Min-limb joint match: 전역 합산 → 최악 다리 기준 (최악 다리가 전체 보상 결정)
-         scale: 15→60 (per-limb max=3.0, 동일한 최대 보상 180/step 유지)
-      2. σ: 0.05→0.10 (초기 학습 신호 확보, 3°→5.7° 허용)
-      3. 소프트 종료: shoulder 0.15→0.30, drift 0.08→0.20
-         (경계선 케이스 탐색 허용, -40 패널티가 실질적 억제 담당)
+    B-v6 실패 분석 (iter 1220):
+      - drift 0.08→0.20m 완화가 역효과: ang_vel_z 0.206→0.261 rad/s 악화
+      - hip_RR 0.427→0.208 (스피닝 적응 해킹)
+      - stance_4 0.52→0.35, height 0.164→0.157m 모두 악화
+      - 0.08m drift 종료가 스피닝 억제에 실질 기여하고 있었음
+
+    B-v7 수정:
+      1. termination_drift_m: 0.20→0.08m 복원 (스피닝 차단)
+      2. rew_scale_ang_vel_z: -10→-30 (yaw 패널티 3배 강화)
+      3. termination_shoulder_rad: 0.30→0.20 (소폭 복원, 완전 개방은 위험)
+      4. min-limb + σ=0.10 유지 (B-v6에서 검증된 좋은 변경)
     """
 
     episode_length_s: float = 20.0
@@ -60,7 +65,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_gravity: float = -5.0
     rew_scale_ang_vel_xy: float = -0.5
     rew_scale_lin_vel_z: float = -5.0
-    rew_scale_ang_vel_z: float = -10.0  # new-v18: 요 회전 억제 강화
+    rew_scale_ang_vel_z: float = -30.0  # B-v7: -10→-30 (yaw 3배 강화, 스피닝 해킹 차단)
     rew_scale_lin_vel_xy: float = -200.0  # new-v23: -100→-200 (vel 정체 해결, 2배 추가 강화)
     rew_scale_base_drift: float = -60.0  # new-v26: -20→-60 (스텔스 드리프트 차단, 3배)
 
@@ -89,8 +94,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     sigma_foot_alignment: float = 0.08
     rew_scale_foot_alignment: float = 3.0   # new-v18: 재활성화 (leg_link 기준, 발-어깨 정렬)
     sigma_foot_alignment: float = 0.05      # new-v18: 0.08→0.05 (더 타이트한 정렬)
-    termination_drift_m: float = 0.20       # B-v6: 0.08→0.20m (소프트화, -60 패널티가 담당)
-    termination_shoulder_rad: float = 0.30  # B-v6: 0.15→0.30rad (소프트화, -40 패널티가 담당)
+    termination_drift_m: float = 0.08       # B-v7: 0.20→0.08m 복원 (스피닝 차단 핵심)
+    termination_shoulder_rad: float = 0.20  # B-v7: 0.30→0.20rad 소폭 복원
     termination_tilt_cos: float = -0.940    # new-v28: 45°→20° 강화 (cos(20°)=-0.940)
     rew_scale_per_leg_ext: float = 0.0      # new-v17: 제거 (body_height가 대체)
     rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)

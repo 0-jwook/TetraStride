@@ -5,24 +5,24 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v12 — yaw 선형 패널티 + sym 제거 (회전 비대칭 해결).
+    """Stage 1: 서기 학습 B-v13 — 스폰 높이 0.22m + termination 높임 (low-stance local optimum 차단).
 
-    B-v11 최종 분석 (iter 3000):
-      - stance_4 = 0.749 ✓ (역대 최고), hip_RL = 0.795 ✓
-      - hip_RR = 0.210 ⚠ (3000 iter 동안 고착, 0.225→0.210)
-      - ang_vel_z = 0.195 rad/s → quadratic 패널티 = -1.14/step (너무 미약)
-      - sym 보상: rear를 front 저수준(0.133m)으로 끌어내림 → RR 개선 방해
+    B-v12 최종 분석 (iter 3000):
+      - hip_RR = 0.182 ⚠ (여전히 고착, B-v6~B-v12 전 버전 동일 패턴)
+      - 근본 원인: body_height=0.158m에서 hip=0.83 → leg=0.177m → 몸통보다 다리가 길어짐
+        → 지면 반발력 불안정 → policy가 hip=0.17(leg=0.138m)을 선택
+      - 스폰 0.18m에서 바로 지면에 닿음 → 낮은 균형점 local optimum 형성
 
-    B-v12 핵심 수정:
-      1. yaw: quadratic → linear 패널티
-         0.195×(-30) = -5.85/step (5배 강화 → rear leg 비대칭 해소)
-      2. rew_scale_front_rear_sym = 0.0 (제거 - 역효과 확인)
-      3. 나머지 B-v11 설정 유지 (per-joint σ, foot_contact=8, drift=0.08m)
+    B-v13 핵심 수정:
+      1. 스폰 높이: 0.18→0.22m (spot_micro_cfg.py 변경)
+         → 공중에서 시작, legs가 뻗으면서 0.177m에서 균형 찾도록 유도
+      2. termination_height: 0.145→0.155m (낮은 균형점 차단)
+      3. B-v12 나머지 설정 유지 (linear yaw, per-joint σ, foot_contact=8, no sym)
     """
 
     episode_length_s: float = 20.0
 
-    termination_height: float = 0.145  # new-v22: 0.120→0.145 (0.126m 크라우치 전략 차단)
+    termination_height: float = 0.155  # B-v13: 0.145→0.155 (낮은 균형점 차단)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)

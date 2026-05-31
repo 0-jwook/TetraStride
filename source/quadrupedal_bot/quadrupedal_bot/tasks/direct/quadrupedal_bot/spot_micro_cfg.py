@@ -47,7 +47,7 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.18),  # new-v15: 올바른 서기 자세로 복귀 (0.15→0.18)
+        pos=(0.0, 0.0, 0.22),  # B-v13: 0.18→0.22 (높은 스폰으로 leg 완전 뻗기 유도)
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,

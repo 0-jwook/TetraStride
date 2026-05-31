@@ -5,24 +5,19 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v14 — joint_match 제거, 결과 기반 보상만 유지.
+    """Stage 1: 서기 학습 B-v15 — foot_contact 지배적 보상 + 부유 해킹 차단.
 
-    B-v13 분석 및 방향 전환 근거:
-      - joint_match는 특정 각도를 강제 → Stage 2(걷기)에서 스윙 동작과 충돌
-      - hip_RR이 '물리적으로 안정한 각도'(0.37)를 찾아가는데 0.83을 강제해서 낭비
-      - 13버전 × ~1.5시간 = 약 20시간을 서기 하나에 소비 (너무 느림)
-      - 성공한 논문들은 body_height + upright + contact만으로 수렴
+    B-v14 실패 (iter 874):
+      - stance_4 = 0.000, torque_sat_knee = 57.8%
+      - policy가 무릎 최대 토크로 공중 부유 전략 발견
+      - foot_contact(8) < upright(17) + body_height(16) = 33 → 땅 밟을 이유 없음
 
-    B-v14 설계 원칙 (결과만 요구, 수단은 자유):
-      - 필요한 것: 몸통 높이 유지 + 수평 유지 + 4발 접지 + 제자리 유지
-      - 불필요한 것: 관절이 정확히 어디에 있는지 (자연 균형점에 맡김)
-      - B-v13에서 검증된 인사이트 유지:
-        spawn 0.22m, termination 0.155m, linear yaw, foot_contact=8
-
-    기대 효과:
-      - 학습 속도 3~5배 향상 (joint_match와의 충돌 없음)
-      - Stage 2 전환 용이 (관절 구속 없음)
-      - 자연 균형점에서 서기 유도
+    B-v15 핵심 수정:
+      1. foot_contact: 8→40 (지배적 보상, 공중 부유 불가)
+         4발(40) >> 부유(33 = upright+height) → 반드시 발을 땅에 디뎌야 유리
+      2. body_height: 20→10 (보조적, height 신호만 유지)
+      3. non_foot_contact: -30 유지 (무릎 닿음 억제)
+      4. 나머지 B-v14 설정 유지
     """
 
     episode_length_s: float = 20.0
@@ -35,16 +30,17 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # === 핵심 보상: 결과 기반 ===
     rew_scale_alive: float = 1.0
 
-    # 몸통 높이: 대칭 Gaussian (목표 위아래 모두 보상)
+    # 몸통 높이 (보조적)
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 20.0  # B-v14: 10→20, 높이 신호 강화
-    asymmetric_height_reward: bool = False  # B-v14: 대칭으로 변경 (양방향 gradient)
+    rew_scale_body_height: float = 10.0  # B-v15: 20→10 (보조)
+    asymmetric_height_reward: bool = True  # 목표 이하만 패널티 (공중 부유 억제 안 함)
 
     # 수평 유지
     rew_scale_upright: float = 22.0
 
-    # 4발 접지 (B-v10에서 검증: 4발=8, 3발=3, 1발=1)
-    rew_scale_foot_contact: float = 8.0
+    # 4발 접지 — 지배적 보상 (4발=40, 3발=15, 1발=5)
+    # 4발(40) >> 부유(upright22+height10=32) → 발 디디는게 유리
+    rew_scale_foot_contact: float = 40.0  # B-v15: 8→40 (지배적 보상)
 
     # === joint_match 비활성 ===
     rew_scale_joint_match: float = 0.0  # B-v14: 완전 제거 (결과만 요구)

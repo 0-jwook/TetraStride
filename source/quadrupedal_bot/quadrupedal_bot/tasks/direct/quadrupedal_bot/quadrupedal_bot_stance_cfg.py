@@ -5,20 +5,22 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v9 — σ 0.10→0.20 (기울기 소실 문제 해결).
+    """Stage 1: 서기 학습 B-v10 — foot_contact 복원 + σ=0.15 (발 부상 문제 해결).
 
-    B-v8 분석 (iter 720):
-      - hip_RR = 0.170 (편차 0.66 rad) → exp(-0.66/0.10) = 0.001 ≈ 0
-      - 기울기가 0.18/rad → policy가 hip_RR 학습 신호 못 받음 (Vanishing Gradient)
-      - hip_RR/RL 반복 붕괴의 근본 원인: σ=0.10이 편차 큰 관절에선 무력화
-      - stance4 0.503, pitch 7.14°, yaw 0.132 개선 중이었으나 RR 해결 불가
+    B-v9 분석 (iter 1844):
+      - hip_RR: 0.255→0.489 ✓ (σ=0.20 효과, 기울기 복원 성공)
+      - knee_FR = -2.028 → leg_ext=0.118m → FR 발이 지면 4cm 부상
+      - stance_4 = 0.097 (90% 동안 4발 접지 실패!)
+      - 원인: joint_match만으로는 발 접지 동기 없음 (rew_scale_foot_contact=0)
+      - σ=0.20 너무 넓어 knee over-bending 억제 불충분
 
-    B-v9 핵심 수정:
-      1. σ_joint_match: 0.10 → 0.20
-         편차 0.66 rad에서 exp(-3.3) = 0.037 → 기울기 3.7/rad (20배↑)
-         멀리 벗어난 관절도 학습 신호 유지
-      2. rew_scale_joint_match: 60 유지 (max 180/step 동일)
-      3. B-v8 나머지 설정 유지 (drift 0.08m, yaw -30, sym, min-limb)
+    B-v10 핵심 수정:
+      1. rew_scale_foot_contact: 0 → 8.0 (4발 접지 직접 보상)
+         4발: 8.0/step, 3발: 3.0/step (발 들리면 즉시 손해)
+      2. sigma_joint_match: 0.20 → 0.15 (타협점)
+         hip_RR dev=0.34: exp(-2.27)=0.104, gradient 0.693/rad (충분)
+         knee_FR dev=0.55: exp(-3.67)=0.026, 강한 패널티
+      3. 나머지 유지 (drift 0.08m, yaw -30, sym, min-limb)
     """
 
     episode_length_s: float = 20.0
@@ -32,10 +34,10 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # === B 접근법 핵심 보상 ===
     rew_scale_alive: float = 1.0
     rew_scale_upright: float = 22.0  # B-v4: 30→22 (upright 강화가 어깨 벌리기 악화시킴)
-    rew_scale_foot_contact: float = 0.0  # 제거 (관절 매칭이 높이 보장)
+    rew_scale_foot_contact: float = 8.0  # B-v10: 4발 접지 직접 보상 (4발=8, 3발=3, 1발=1)
 
-    # B-v9: σ 확대 (기울기 소실 해결)
-    sigma_joint_match: float = 0.20   # 0.10→0.20: 편차 큰 관절도 학습 신호 유지
+    # B-v10: σ 타협점 (기울기 유지 + over-bending 억제)
+    sigma_joint_match: float = 0.15   # 0.20→0.15: hip_RR 0.34편차 gradient=0.104, knee 0.55편차=0.026
     rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step 동일
 
     # === 높이 보상 (보조) ===

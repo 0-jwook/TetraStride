@@ -195,9 +195,11 @@ class QuadrupedalBotEnv(DirectRLEnv):
             _gait_gate_early,
         )
 
-        # yaw 추적: legged_gym 방식 exp 보상 (패널티 단독 → 보상+패널티 병행)
+        # yaw 추적: B-v12 선형 패널티 (quadratic → linear, 5배 효과 증가)
+        # quadratic: 0.195²×(-30) = -1.14/step → linear: 0.195×(-30) = -5.85/step
         yaw_error_sq = torch.square(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
-        rew_ang_vel_z = yaw_error_sq * self.cfg.rew_scale_ang_vel_z  # 패널티 유지
+        yaw_error_abs = torch.abs(self.robot.data.root_ang_vel_b[:, 2] - self._commands[:, 2])
+        rew_ang_vel_z = yaw_error_abs * self.cfg.rew_scale_ang_vel_z  # 선형 패널티
         rew_yaw_tracking = torch.exp(-yaw_error_sq / 0.25) * self.cfg.rew_scale_yaw_tracking  # exp 보상 추가
 
         # Heading tracking reward: _heading_err already computed in _get_observations()

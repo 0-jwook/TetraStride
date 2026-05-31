@@ -5,19 +5,19 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v11 — 관절 타입별 σ (hip 크게, knee/shoulder 작게).
+    """Stage 1: 서기 학습 B-v12 — yaw 선형 패널티 + sym 제거 (회전 비대칭 해결).
 
-    B-v10 분석 (iter 918):
-      - stance_4 = 0.532 ✓ (foot_contact 효과)
-      - hip_RR = 0.175 ⚠ (σ=0.15에서도 gradient 소실: exp(-4.37)=0.013)
-      - 딜레마: hip에는 큰 σ 필요, knee엔 작은 σ 필요 → 단일 σ로 해결 불가
+    B-v11 최종 분석 (iter 3000):
+      - stance_4 = 0.749 ✓ (역대 최고), hip_RL = 0.795 ✓
+      - hip_RR = 0.210 ⚠ (3000 iter 동안 고착, 0.225→0.210)
+      - ang_vel_z = 0.195 rad/s → quadratic 패널티 = -1.14/step (너무 미약)
+      - sym 보상: rear를 front 저수준(0.133m)으로 끌어내림 → RR 개선 방해
 
-    B-v11 해결 — 관절 타입별 σ:
-      sigma_hip      = 0.25  (hip dev=0.65: exp(-2.6)=0.074, gradient 0.296/rad ✓)
-      sigma_knee     = 0.10  (knee dev=0.55: exp(-5.5)=0.004, 강한 패널티 ✓)
-      sigma_shoulder = 0.10  (어깨 벌리기 억제)
-      foot_contact   = 8.0  (stance_4 유지)
-      나머지 유지 (drift 0.08m, yaw -30, sym, min-limb)
+    B-v12 핵심 수정:
+      1. yaw: quadratic → linear 패널티
+         0.195×(-30) = -5.85/step (5배 강화 → rear leg 비대칭 해소)
+      2. rew_scale_front_rear_sym = 0.0 (제거 - 역효과 확인)
+      3. 나머지 B-v11 설정 유지 (per-joint σ, foot_contact=8, drift=0.08m)
     """
 
     episode_length_s: float = 20.0
@@ -104,9 +104,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)
     rew_scale_knee_clearance: float = 5.0   # new-v8: 무릎 높이 보상 (max 4×0.15×5=3/step)
 
-    # === B-v8: 앞/뒤 다리 대칭 보상 ===
-    sigma_front_rear_sym: float = 0.03    # 허용 오차 3cm
-    rew_scale_front_rear_sym: float = 10.0  # max 10.0/step (pitch 순환고리 차단)
+    # === B-v12: sym 제거 (역효과 확인) ===
+    sigma_front_rear_sym: float = 0.03    # 유지 (비활성)
+    rew_scale_front_rear_sym: float = 0.0  # B-v12: 제거 (rear를 잘못된 수준으로 끌어내림)
 
     # === 기타 ===
     rew_scale_dof_pos_limits: float = -1.0

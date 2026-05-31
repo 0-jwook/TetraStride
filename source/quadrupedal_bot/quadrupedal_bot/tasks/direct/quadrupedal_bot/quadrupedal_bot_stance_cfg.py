@@ -5,113 +5,100 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v13 — 스폰 높이 0.22m + termination 높임 (low-stance local optimum 차단).
+    """Stage 1: 서기 학습 B-v14 — joint_match 제거, 결과 기반 보상만 유지.
 
-    B-v12 최종 분석 (iter 3000):
-      - hip_RR = 0.182 ⚠ (여전히 고착, B-v6~B-v12 전 버전 동일 패턴)
-      - 근본 원인: body_height=0.158m에서 hip=0.83 → leg=0.177m → 몸통보다 다리가 길어짐
-        → 지면 반발력 불안정 → policy가 hip=0.17(leg=0.138m)을 선택
-      - 스폰 0.18m에서 바로 지면에 닿음 → 낮은 균형점 local optimum 형성
+    B-v13 분석 및 방향 전환 근거:
+      - joint_match는 특정 각도를 강제 → Stage 2(걷기)에서 스윙 동작과 충돌
+      - hip_RR이 '물리적으로 안정한 각도'(0.37)를 찾아가는데 0.83을 강제해서 낭비
+      - 13버전 × ~1.5시간 = 약 20시간을 서기 하나에 소비 (너무 느림)
+      - 성공한 논문들은 body_height + upright + contact만으로 수렴
 
-    B-v13 핵심 수정:
-      1. 스폰 높이: 0.18→0.22m (spot_micro_cfg.py 변경)
-         → 공중에서 시작, legs가 뻗으면서 0.177m에서 균형 찾도록 유도
-      2. termination_height: 0.145→0.155m (낮은 균형점 차단)
-      3. B-v12 나머지 설정 유지 (linear yaw, per-joint σ, foot_contact=8, no sym)
+    B-v14 설계 원칙 (결과만 요구, 수단은 자유):
+      - 필요한 것: 몸통 높이 유지 + 수평 유지 + 4발 접지 + 제자리 유지
+      - 불필요한 것: 관절이 정확히 어디에 있는지 (자연 균형점에 맡김)
+      - B-v13에서 검증된 인사이트 유지:
+        spawn 0.22m, termination 0.155m, linear yaw, foot_contact=8
+
+    기대 효과:
+      - 학습 속도 3~5배 향상 (joint_match와의 충돌 없음)
+      - Stage 2 전환 용이 (관절 구속 없음)
+      - 자연 균형점에서 서기 유도
     """
 
     episode_length_s: float = 20.0
-
-    termination_height: float = 0.155  # B-v13: 0.145→0.155 (낮은 균형점 차단)
+    termination_height: float = 0.155  # B-v13에서 검증: 낮은 local optimum 차단
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
     cmd_ang_vel_z_range: tuple = (0.0, 0.0)
 
-    # === B 접근법 핵심 보상 ===
+    # === 핵심 보상: 결과 기반 ===
     rew_scale_alive: float = 1.0
-    rew_scale_upright: float = 22.0  # B-v4: 30→22 (upright 강화가 어깨 벌리기 악화시킴)
-    rew_scale_foot_contact: float = 8.0  # B-v10: 4발 접지 직접 보상 (4발=8, 3발=3, 1발=1)
 
-    # B-v11: 관절 타입별 σ
-    sigma_joint_match: float = 0.15   # 미사용 (per-joint σ로 대체), 기본값 유지
-    sigma_hip_match: float = 0.25     # hip: 큰 σ (dev=0.65에서도 gradient 유지)
-    sigma_knee_match: float = 0.10    # knee: 작은 σ (over-bending 강력 억제)
-    sigma_shoulder_match: float = 0.10  # shoulder: 작은 σ (어깨 벌리기 억제)
-    rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step 동일
-
-    # === 높이 보상 (보조) ===
+    # 몸통 높이: 대칭 Gaussian (목표 위아래 모두 보상)
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 10.0  # 보조적 높이 신호
-    asymmetric_height_reward: bool = True  # 목표 이하만 패널티
+    rew_scale_body_height: float = 20.0  # B-v14: 10→20, 높이 신호 강화
+    asymmetric_height_reward: bool = False  # B-v14: 대칭으로 변경 (양방향 gradient)
 
-    # === 다리 뻗음 보상 (v34 신규) ===
-    # leg_ext = 0.1075×cos(leg) + 0.130×cos(leg+knee), 목표 0.177m
-    # 4발 개별 Gaussian 합산 → max 4×1.0×scale = 4×2.0 = 8.0
-    target_leg_extension: float = 0.177
-    sigma_leg_extension: float = 0.05   # v35: 0.02→0.05 (exp(-|err|/σ), body_height와 동일 계열)
-    rew_scale_leg_extension: float = 0.0   # new-v8: 제거 (per_leg_ext로 통합)
+    # 수평 유지
+    rew_scale_upright: float = 22.0
 
-    # === 무릎 서기 차단 강화 ===
-    rew_scale_non_foot_contact: float = -30.0  # v30:-8.0 → v31:-30.0 (버그 수정: 중복 정의 제거)
-    non_foot_contact_threshold: float = 10.0   # new-v6: 5N→10N (과민 노이즈 감소, 명확한 접촉만 감지)
+    # 4발 접지 (B-v10에서 검증: 4발=8, 3발=3, 1발=1)
+    rew_scale_foot_contact: float = 8.0
 
-    # === stand_still 비활성 유지 ===
-    rew_scale_stand_still: float = 0.0
-
-    # === 자세 패널티 ===
-    rew_scale_knee_height_stance: float = -30.0
-    knee_stance_height_threshold: float = 0.06
-    rew_scale_knee_angle: float = -3.0
+    # === joint_match 비활성 ===
+    rew_scale_joint_match: float = 0.0  # B-v14: 완전 제거 (결과만 요구)
 
     # === 안정화 패널티 ===
+    rew_scale_ang_vel_z: float = -30.0     # linear 패널티 (B-v12에서 검증)
+    rew_scale_lin_vel_xy: float = -200.0   # 수평 이동 억제
+    rew_scale_base_drift: float = -60.0    # drift 억제
+    rew_scale_ang_vel_xy: float = -0.5     # 롤/피치 각속도 억제
+    rew_scale_lin_vel_z: float = -5.0      # 수직 움직임 억제
     rew_scale_gravity: float = -5.0
-    rew_scale_ang_vel_xy: float = -0.5
-    rew_scale_lin_vel_z: float = -5.0
-    rew_scale_ang_vel_z: float = -30.0  # B-v7: -10→-30 (yaw 3배 강화, 스피닝 해킹 차단)
-    rew_scale_lin_vel_xy: float = -200.0  # new-v23: -100→-200 (vel 정체 해결, 2배 추가 강화)
-    rew_scale_base_drift: float = -60.0  # new-v26: -20→-60 (스텔스 드리프트 차단, 3배)
 
-    # === 동작 품질 ===
+    # === 자세 품질 ===
     rew_scale_action_rate: float = -0.05
     rew_scale_foot_slip: float = -3.0
     rew_scale_joint_vel: float = -1e-4
     rew_scale_torque: float = -1e-5
 
-    # === 형상 패널티 (foot_spread 계열 제거) ===
-    rew_scale_shoulder_default: float = -40.0  # new-v31: -30→-40 (어깨 벌리기 강력 차단)
-    rew_scale_joint_default: float = -8.0  # v37: -5.0→-8.0 (knee 과굽힘 억제 강화)
-    rew_scale_foot_spread: float = 0.0        # v26:-3 → v27:0 (가라앉기 인센티브 제거)
-    rew_scale_foot_side_span: float = 0.0     # v26:-3 → v27:0 (동일 이유)
+    # === 무릎 서기 차단 유지 ===
+    rew_scale_non_foot_contact: float = -30.0
+    non_foot_contact_threshold: float = 10.0
+
+    # === 어깨 패널티 (넓은 허용치로 완화) ===
+    rew_scale_shoulder_default: float = -20.0  # B-v14: 40→20 (joint_match 없으니 완화)
+
+    # === 종료 조건 ===
+    termination_drift_m: float = 0.08
+    termination_shoulder_rad: float = 0.35   # joint_match 없으니 완화
+    termination_tilt_cos: float = -0.940
 
     # === 비활성 ===
+    rew_scale_foot_contact_4: float = 0.0
+    rew_scale_standing_quality: float = 0.0
+    rew_scale_knee_height_stance: float = 0.0
+    rew_scale_knee_clearance: float = 0.0
+    rew_scale_foot_alignment: float = 0.0
+    rew_scale_knee_angle: float = 0.0
+    rew_scale_leg_extension: float = 0.0
+    rew_scale_per_leg_ext: float = 0.0
+    rew_scale_stand_still: float = 0.0
+    rew_scale_foot_spread: float = 0.0
+    rew_scale_foot_side_span: float = 0.0
+    rew_scale_joint_default: float = 0.0
+    rew_scale_front_rear_sym: float = 0.0
     rew_scale_lin_vel: float = 0.0
     rew_scale_ang_vel: float = 0.0
     rew_scale_air_time: float = 0.0
     rew_scale_movement: float = 0.0
     rew_scale_gait: float = 0.0
-
-    # === 발-어깨 수평 정렬 (new-v1 신규) ===
-    # world frame에서 shoulder_link와 foot_link의 XY 수평 거리 측정
-    # 발이 어깨 바로 아래 위치할수록 보상 증가 (sigma=0.08m, 5.5cm hip_flex offset 포함)
-    sigma_foot_alignment: float = 0.08
-    rew_scale_foot_alignment: float = 3.0   # new-v18: 재활성화 (leg_link 기준, 발-어깨 정렬)
-    sigma_foot_alignment: float = 0.05      # new-v18: 0.08→0.05 (더 타이트한 정렬)
-    termination_drift_m: float = 0.08       # B-v7: 0.20→0.08m 복원 (스피닝 차단 핵심)
-    termination_shoulder_rad: float = 0.20  # B-v7: 0.30→0.20rad 소폭 복원
-    termination_tilt_cos: float = -0.940    # new-v28: 45°→20° 강화 (cos(20°)=-0.940)
-    rew_scale_per_leg_ext: float = 0.0      # new-v17: 제거 (body_height가 대체)
-    rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)
-    rew_scale_knee_clearance: float = 5.0   # new-v8: 무릎 높이 보상 (max 4×0.15×5=3/step)
-
-    # === B-v12: sym 제거 (역효과 확인) ===
-    sigma_front_rear_sym: float = 0.03    # 유지 (비활성)
-    rew_scale_front_rear_sym: float = 0.0  # B-v12: 제거 (rear를 잘못된 수준으로 끌어내림)
+    rew_scale_dof_pos_limits: float = 0.0
+    rew_scale_contact_forces: float = 0.0
 
     # === 기타 ===
-    rew_scale_dof_pos_limits: float = -1.0
-    rew_scale_contact_forces: float = -1e-3
     freeze_gait_phase: bool = True
     orientation_sigma: float = 0.10
     action_scale: float = 0.10
-    init_crouch_prob: float = 0.0   # new-v15: 쪼그림 시작 비활성 (서기 자세만)
+    init_crouch_prob: float = 0.0

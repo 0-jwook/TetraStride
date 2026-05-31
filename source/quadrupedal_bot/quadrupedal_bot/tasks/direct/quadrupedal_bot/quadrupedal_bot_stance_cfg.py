@@ -5,19 +5,21 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v15 — foot_contact 지배적 보상 + 부유 해킹 차단.
+    """Stage 1: 서기 학습 B-v16 — 다리별 개별 접지 보상 추가 (앞발 편중 3발 자세 차단).
 
-    B-v14 실패 (iter 874):
-      - stance_4 = 0.000, torque_sat_knee = 57.8%
-      - policy가 무릎 최대 토크로 공중 부유 전략 발견
-      - foot_contact(8) < upright(17) + body_height(16) = 33 → 땅 밟을 이유 없음
+    B-v15 분석 (iter 632):
+      - stance_4 = 0.257 (개선), body_height=0.178m, ang_vel_z=0.007 ✓
+      - 문제: hip_FL/FR=1.12/1.16 (과신장), hip_RL/RR=0.36/0.40 (약신장)
+      - 앞발 2개만 땅에 딛는 3발 자세 (강아지 앉은 자세)
+      - 원인: foot_contact의 cliff(3발→4발)가 있어도 3발이 더 쉬운 local optimum
+      - 4개 다리 모두 < 형태 동일 구조 확인 (역관절 아님)
 
-    B-v15 핵심 수정:
-      1. foot_contact: 8→40 (지배적 보상, 공중 부유 불가)
-         4발(40) >> 부유(33 = upright+height) → 반드시 발을 땅에 디뎌야 유리
-      2. body_height: 20→10 (보조적, height 신호만 유지)
-      3. non_foot_contact: -30 유지 (무릎 닿음 억제)
-      4. 나머지 B-v14 설정 유지
+    B-v16 핵심 수정:
+      - rew_scale_per_leg_contact = 15 (다리별 선형 보상)
+        각 발이 독립적으로 보상 → 앞발 편중 없이 4발 모두 땅에 유도
+        4발: 40(기존) + 60(per_leg) = 100 >> 3발: 15 + 45 = 60
+        3발→4발 gradient: +40 (충분히 큰 유인)
+      - foot_contact=40, body_height=10, upright=22 유지
     """
 
     episode_length_s: float = 20.0
@@ -44,6 +46,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     # === joint_match 비활성 ===
     rew_scale_joint_match: float = 0.0  # B-v14: 완전 제거 (결과만 요구)
+
+    # === B-v16: 다리별 개별 접지 보상 ===
+    rew_scale_per_leg_contact: float = 15.0  # 발 1개당 15점, 4발=60 (선형 gradient)
 
     # === 안정화 패널티 ===
     rew_scale_ang_vel_z: float = -30.0     # linear 패널티 (B-v12에서 검증)

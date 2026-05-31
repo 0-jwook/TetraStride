@@ -493,6 +493,14 @@ class QuadrupedalBotEnv(DirectRLEnv):
         _bonus  = (num_contacts >= 4).float() * 5.0
         rew_foot_contact = (_linear + _bonus) * (self.cfg.rew_scale_foot_contact / 8.0)
 
+        # B-v16: 다리별 개별 접지 보상 (FL, FR, RL, RR 각각 독립 보상)
+        # foot_contact의 cliff(3발→4발 점프)를 선형 gradient로 보완
+        # 특히 뒷발 접지 유도 — 앞발 편중 3점 자세 차단
+        if self.cfg.rew_scale_per_leg_contact > 0:
+            rew_per_leg_contact = foot_in_contact_4.sum(dim=1) * self.cfg.rew_scale_per_leg_contact
+        else:
+            rew_per_leg_contact = torch.zeros(self.num_envs, device=self.device)
+
         # Standing Quality reward (new-v14): 곱셈 소프트 AND
         # 높이·균형·4발접촉·다리뻗음 모두 동시에 만족할 때 최대, 하나라도 나쁘면 전체 감소
         _h_q   = (self.robot.data.root_pos_w[:, 2] / self.cfg.target_body_height).clamp(0.0, 1.0)
@@ -655,6 +663,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
                 "diag/limb_score_RL": (_limb_scores[:, 2] / 3.0).mean().item(),
                 "diag/limb_score_RR": (_limb_scores[:, 3] / 3.0).mean().item(),
                 "rew/foot_contact": rew_foot_contact.mean().item(),
+                "rew/per_leg_contact": rew_per_leg_contact.mean().item(),
                 "diag/num_feet_contact": num_contacts.mean().item(),
                 "rew/shoulder_default": rew_shoulder_default.mean().item(),
                 "rew/foot_side_span": rew_foot_side_span.mean().item(),
@@ -788,7 +797,7 @@ class QuadrupedalBotEnv(DirectRLEnv):
 
         return (base_rew + rew_gait + rew_body_height + rew_leg_extension + rew_per_leg_ext + rew_knee_clearance + rew_standing_quality + rew_foot_alignment + rew_non_foot_contact + rew_joint_default + rew_joint_match
                 + rew_front_rear_sym + rew_shoulder_default + rew_foot_side_span
-                + rew_upright + rew_foot_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
+                + rew_upright + rew_foot_contact + rew_per_leg_contact + rew_ang_vel_z + rew_lin_vel_xy + rew_foot_spread + rew_foot_slip
                 + rew_dof_acc + rew_stand_still + rew_dof_pos_limits + rew_contact_forces
                 + rew_air_time_var + rew_lin_vel_penalty + rew_swing_contact + rew_foot_height
                 + rew_stumble + rew_foot_stance + rew_knee_angle + rew_knee_height_stance

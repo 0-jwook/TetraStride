@@ -5,18 +5,20 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v8 — 앞/뒤 다리 대칭 보상 추가 (pitch 순환고리 차단).
+    """Stage 1: 서기 학습 B-v9 — σ 0.10→0.20 (기울기 소실 문제 해결).
 
-    B-v7 분석 (iter 1274):
-      - hip_FL/FR ≈ 0.83 ✓, knee_FL/FR = -1.89 ⚠ (개선 안됨)
-      - 근본 원인: pitch 8° → 앞 hip 1.2cm 낮음 → 기하학적으로 knee가 -1.89여야 지면 닿음
-      - pitch 원인: leg_ext 앞(0.134m) < 뒤(0.174m) → 앞/뒤 불균형
-      - min-limb 혼자로는 이 순환고리 못 끊음
+    B-v8 분석 (iter 720):
+      - hip_RR = 0.170 (편차 0.66 rad) → exp(-0.66/0.10) = 0.001 ≈ 0
+      - 기울기가 0.18/rad → policy가 hip_RR 학습 신호 못 받음 (Vanishing Gradient)
+      - hip_RR/RL 반복 붕괴의 근본 원인: σ=0.10이 편차 큰 관절에선 무력화
+      - stance4 0.503, pitch 7.14°, yaw 0.132 개선 중이었으나 RR 해결 불가
 
-    B-v8 수정:
-      1. rew_front_rear_sym: |front_ext - rear_ext| → exp(-err/0.03) × 10.0
-         앞뒤 다리 길이를 맞추도록 압박 → pitch 해소 → knee 자연스럽게 펴짐
-      2. B-v7 나머지 설정 (drift 0.08m, yaw -30, min-limb, σ=0.10) 유지
+    B-v9 핵심 수정:
+      1. σ_joint_match: 0.10 → 0.20
+         편차 0.66 rad에서 exp(-3.3) = 0.037 → 기울기 3.7/rad (20배↑)
+         멀리 벗어난 관절도 학습 신호 유지
+      2. rew_scale_joint_match: 60 유지 (max 180/step 동일)
+      3. B-v8 나머지 설정 유지 (drift 0.08m, yaw -30, sym, min-limb)
     """
 
     episode_length_s: float = 20.0
@@ -32,9 +34,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 22.0  # B-v4: 30→22 (upright 강화가 어깨 벌리기 악화시킴)
     rew_scale_foot_contact: float = 0.0  # 제거 (관절 매칭이 높이 보장)
 
-    # B-v6: Min-limb 관절 매칭 보상 (per-limb min, scale 상향)
-    sigma_joint_match: float = 0.10   # 0.05→0.10: 5.7° 허용 (초기 학습 신호 확보)
-    rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step (min-limb 보상, 동일 최대치)
+    # B-v9: σ 확대 (기울기 소실 해결)
+    sigma_joint_match: float = 0.20   # 0.10→0.20: 편차 큰 관절도 학습 신호 유지
+    rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step 동일
 
     # === 높이 보상 (보조) ===
     target_body_height: float = 0.177

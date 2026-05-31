@@ -145,6 +145,8 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     target_leg_extension: float = 0.177   # 목표 수직 뻗음 (m)
     sigma_leg_extension: float = 0.02     # Gaussian 폭 (작을수록 타이트)
     rew_scale_leg_extension: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
+    sigma_front_rear_sym: float = 0.03    # 앞/뒤 다리 길이 대칭 허용 오차 (m)
+    rew_scale_front_rear_sym: float = 0.0 # 앞/뒤 대칭 보상 (B-v8: pitch 순환고리 차단)
 
     # 발-어깨 수평 정렬 보상 (world frame XY, v37)
     # 발이 어깨 바로 아래에 위치할수록 보상 → exp(-XY거리 / sigma)

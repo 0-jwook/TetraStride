@@ -5,19 +5,18 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v7 — Min-limb + σ=0.10 + drift 종료 복원 + yaw 패널티 3배.
+    """Stage 1: 서기 학습 B-v8 — 앞/뒤 다리 대칭 보상 추가 (pitch 순환고리 차단).
 
-    B-v6 실패 분석 (iter 1220):
-      - drift 0.08→0.20m 완화가 역효과: ang_vel_z 0.206→0.261 rad/s 악화
-      - hip_RR 0.427→0.208 (스피닝 적응 해킹)
-      - stance_4 0.52→0.35, height 0.164→0.157m 모두 악화
-      - 0.08m drift 종료가 스피닝 억제에 실질 기여하고 있었음
+    B-v7 분석 (iter 1274):
+      - hip_FL/FR ≈ 0.83 ✓, knee_FL/FR = -1.89 ⚠ (개선 안됨)
+      - 근본 원인: pitch 8° → 앞 hip 1.2cm 낮음 → 기하학적으로 knee가 -1.89여야 지면 닿음
+      - pitch 원인: leg_ext 앞(0.134m) < 뒤(0.174m) → 앞/뒤 불균형
+      - min-limb 혼자로는 이 순환고리 못 끊음
 
-    B-v7 수정:
-      1. termination_drift_m: 0.20→0.08m 복원 (스피닝 차단)
-      2. rew_scale_ang_vel_z: -10→-30 (yaw 패널티 3배 강화)
-      3. termination_shoulder_rad: 0.30→0.20 (소폭 복원, 완전 개방은 위험)
-      4. min-limb + σ=0.10 유지 (B-v6에서 검증된 좋은 변경)
+    B-v8 수정:
+      1. rew_front_rear_sym: |front_ext - rear_ext| → exp(-err/0.03) × 10.0
+         앞뒤 다리 길이를 맞추도록 압박 → pitch 해소 → knee 자연스럽게 펴짐
+      2. B-v7 나머지 설정 (drift 0.08m, yaw -30, min-limb, σ=0.10) 유지
     """
 
     episode_length_s: float = 20.0
@@ -100,6 +99,10 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_per_leg_ext: float = 0.0      # new-v17: 제거 (body_height가 대체)
     rew_scale_standing_quality: float = 0.0   # new-v17: 제거 (단순화)
     rew_scale_knee_clearance: float = 5.0   # new-v8: 무릎 높이 보상 (max 4×0.15×5=3/step)
+
+    # === B-v8: 앞/뒤 다리 대칭 보상 ===
+    sigma_front_rear_sym: float = 0.03    # 허용 오차 3cm
+    rew_scale_front_rear_sym: float = 10.0  # max 10.0/step (pitch 순환고리 차단)
 
     # === 기타 ===
     rew_scale_dof_pos_limits: float = -1.0

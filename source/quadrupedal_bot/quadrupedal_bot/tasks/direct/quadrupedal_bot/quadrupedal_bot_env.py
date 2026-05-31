@@ -454,9 +454,13 @@ class QuadrupedalBotEnv(DirectRLEnv):
         # 해킹 불가: 관절이 목표에 맞으면 FK에 의해 높이/발위치/자세 자동으로 올바름
         if self.cfg.rew_scale_joint_match > 0:
             _joint_err = torch.abs(self.joint_pos - self.robot.data.default_joint_pos)  # [N, 12]
-            # Per-limb min: 각 다리의 3관절(shoulder+leg+knee) 합산 후 최솟값 → 최악 다리가 전체 보상 결정
+            # B-v11: 관절 타입별 σ (hip=크게, knee/shoulder=작게)
+            # hip dev~0.65: sigma_hip=0.25 → exp(-2.6)=0.074, gradient 0.296/rad
+            # knee dev~0.55: sigma_knee=0.10 → exp(-5.5)=0.004, 강한 패널티
             _limb_scores = torch.stack([
-                torch.exp(-_joint_err[:, [self._shoulder_ids[i], self._leg_ids[i], self._knee_ids[i]]] / self.cfg.sigma_joint_match).sum(dim=1)
+                torch.exp(-_joint_err[:, self._shoulder_ids[i]] / self.cfg.sigma_shoulder_match)
+                + torch.exp(-_joint_err[:, self._leg_ids[i]] / self.cfg.sigma_hip_match)
+                + torch.exp(-_joint_err[:, self._knee_ids[i]] / self.cfg.sigma_knee_match)
                 for i in range(4)
             ], dim=1)  # [N, 4], each limb max = 3.0
             _joint_match = _limb_scores.min(dim=1).values  # [N], worst limb dominates

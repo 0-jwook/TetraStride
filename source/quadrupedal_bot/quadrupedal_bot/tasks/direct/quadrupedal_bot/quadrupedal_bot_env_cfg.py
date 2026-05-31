@@ -147,6 +147,10 @@ class QuadrupedalBotEnvCfg(DirectRLEnvCfg):
     rew_scale_leg_extension: float = 0.0  # 4발 합산 × scale (stance_cfg에서 활성화)
     sigma_front_rear_sym: float = 0.03    # 앞/뒤 다리 길이 대칭 허용 오차 (m)
     rew_scale_front_rear_sym: float = 0.0 # 앞/뒤 대칭 보상 (B-v8: pitch 순환고리 차단)
+    # B-v11: 관절 타입별 σ (기존 sigma_joint_match 대체)
+    sigma_hip_match: float = 0.15         # hip: 큰 σ (이동 범위 큼)
+    sigma_knee_match: float = 0.15        # knee: 작은 σ (과굽힘 강하게 억제)
+    sigma_shoulder_match: float = 0.15   # shoulder: 작은 σ (어깨 벌리기 억제)
 
     # 발-어깨 수평 정렬 보상 (world frame XY, v37)
     # 발이 어깨 바로 아래에 위치할수록 보상 → exp(-XY거리 / sigma)

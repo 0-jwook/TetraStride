@@ -5,22 +5,19 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v10 — foot_contact 복원 + σ=0.15 (발 부상 문제 해결).
+    """Stage 1: 서기 학습 B-v11 — 관절 타입별 σ (hip 크게, knee/shoulder 작게).
 
-    B-v9 분석 (iter 1844):
-      - hip_RR: 0.255→0.489 ✓ (σ=0.20 효과, 기울기 복원 성공)
-      - knee_FR = -2.028 → leg_ext=0.118m → FR 발이 지면 4cm 부상
-      - stance_4 = 0.097 (90% 동안 4발 접지 실패!)
-      - 원인: joint_match만으로는 발 접지 동기 없음 (rew_scale_foot_contact=0)
-      - σ=0.20 너무 넓어 knee over-bending 억제 불충분
+    B-v10 분석 (iter 918):
+      - stance_4 = 0.532 ✓ (foot_contact 효과)
+      - hip_RR = 0.175 ⚠ (σ=0.15에서도 gradient 소실: exp(-4.37)=0.013)
+      - 딜레마: hip에는 큰 σ 필요, knee엔 작은 σ 필요 → 단일 σ로 해결 불가
 
-    B-v10 핵심 수정:
-      1. rew_scale_foot_contact: 0 → 8.0 (4발 접지 직접 보상)
-         4발: 8.0/step, 3발: 3.0/step (발 들리면 즉시 손해)
-      2. sigma_joint_match: 0.20 → 0.15 (타협점)
-         hip_RR dev=0.34: exp(-2.27)=0.104, gradient 0.693/rad (충분)
-         knee_FR dev=0.55: exp(-3.67)=0.026, 강한 패널티
-      3. 나머지 유지 (drift 0.08m, yaw -30, sym, min-limb)
+    B-v11 해결 — 관절 타입별 σ:
+      sigma_hip      = 0.25  (hip dev=0.65: exp(-2.6)=0.074, gradient 0.296/rad ✓)
+      sigma_knee     = 0.10  (knee dev=0.55: exp(-5.5)=0.004, 강한 패널티 ✓)
+      sigma_shoulder = 0.10  (어깨 벌리기 억제)
+      foot_contact   = 8.0  (stance_4 유지)
+      나머지 유지 (drift 0.08m, yaw -30, sym, min-limb)
     """
 
     episode_length_s: float = 20.0
@@ -36,8 +33,11 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_upright: float = 22.0  # B-v4: 30→22 (upright 강화가 어깨 벌리기 악화시킴)
     rew_scale_foot_contact: float = 8.0  # B-v10: 4발 접지 직접 보상 (4발=8, 3발=3, 1발=1)
 
-    # B-v10: σ 타협점 (기울기 유지 + over-bending 억제)
-    sigma_joint_match: float = 0.15   # 0.20→0.15: hip_RR 0.34편차 gradient=0.104, knee 0.55편차=0.026
+    # B-v11: 관절 타입별 σ
+    sigma_joint_match: float = 0.15   # 미사용 (per-joint σ로 대체), 기본값 유지
+    sigma_hip_match: float = 0.25     # hip: 큰 σ (dev=0.65에서도 gradient 유지)
+    sigma_knee_match: float = 0.10    # knee: 작은 σ (over-bending 강력 억제)
+    sigma_shoulder_match: float = 0.10  # shoulder: 작은 σ (어깨 벌리기 억제)
     rew_scale_joint_match: float = 60.0  # max = 60.0 × 3 = 180/step 동일
 
     # === 높이 보상 (보조) ===

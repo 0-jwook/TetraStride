@@ -5,37 +5,23 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v22 — 어깨 패널티 -30→-80 + 종료 0.50→0.35 복원.
+    """Stage 1: 서기 학습 B-v23 — termination_height 0.165->0.155m (에피소드 완주).
 
-    B-v21 시각화 결과:
-      - 조기종료 없음 ✓ (에피소드 완주 성공)
-      - 뒷다리 여전히 중앙 수렴 — -30 패널티 부족 (전체 보상의 8%뿐)
-        shoulder excess=0.161 rad → -30×0.161²×4 = -3.1/step (너무 약함)
-      - CoM 앞쏠림 — hip_FL/FR 과신장
+    B-v22 최종 결과:
+      - stance_4 = 0.776 ✓, pitch = 4.48° ✓, ang_vel_z = 0.034 ✓
+      - 문제: Mean episode_length = 105 steps (~0.87초, 목표 20초)
+        term_height_ratio = 0.009 -> 높이 0.165m 이하 순간 하강마다 종료
+        1/0.009 = 111 step -> 로봇이 안정적으로 서있지만 높이 종료가 자꾸 발동
 
-    B-v22 수정:
-      1. rew_scale_shoulder_default: -30 → -80 (패널티 22%로 강화)
-         excess=0.161: -80×0.161²×4 = -8.3/step (vs 이전 -3.1)
-      2. termination_shoulder_rad: 0.50 → 0.35 복원
-         강한 패널티로 0.35 이전에 억제, 극단적 수렴만 차단
-      3. 나머지 B-v21 유지
-
-    B-v20 근본 수정 (사용자 제안):
-      1. CoM 높이 → 각 다리 FK 뻗음 길이 (0.177m 목표)
-         leg_ext = 0.1075×cos(hip) + 0.130×cos(hip+knee)
-         기울어도 속일 수 없음 — 4발 각각 0.177m여야 최대 보상
-      2. 가산 → 곱셈 보상
-         rew = _e_q × _u_q × _c_q × scale
-         (다리뻗음 × 수평 × 4발접지) → 하나라도 나쁘면 전체 감소
-
-    보상 구조 (max ~130/step):
-      곱셈 품질: scale=80 → 완벽 시 80, 하나라도 나쁘면 급감
-      탐색 gradient: per_leg_contact=10, upright=15 (소규모 가산 유지)
-      패널티: yaw, drift, stability
+    B-v23 수정:
+      - termination_height: 0.165 -> 0.155m (완화)
+        순간 하강 허용 폭 확대 -> 에피소드 완주 가능
+        B-v20에서 검증된 값 (0.162m에서도 안정적으로 동작)
+      - shoulder -80, 나머지 B-v22 유지
     """
 
     episode_length_s: float = 20.0
-    termination_height: float = 0.165  # B-v18: 쪼그림 차단
+    termination_height: float = 0.155  # B-v23: 0.165->0.155m (에피소드 완주 허용)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
@@ -43,7 +29,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     # ─── 핵심: 곱셈 서기 품질 보상 ─────────────────────────────────────
     # _e_q(다리뻗음) × _u_q(수평) × _c_q(4발접지) × scale
-    # 4발 완전 뻗음 + 수평 + 4발 접지 → 80/step
+    # 4발 완전 뻗음 + 수평 + 4발 접지 -> 80/step
     # 하나라도 나쁘면 급감 (기울기 14° 시: 80×0.56=45, 다리 짧으면 추가 감소)
     target_leg_extension: float = 0.177   # FK 목표 뻗음 길이 (m)
     sigma_leg_extension: float = 0.02     # exp 허용 오차 2cm (작을수록 타이트)
@@ -75,11 +61,11 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
     rew_scale_non_foot_contact: float = -30.0  # 무릎 접지 차단
     non_foot_contact_threshold: float = 10.0
-    rew_scale_shoulder_default: float = -80.0  # B-v22: -30→-80 (패널티 2.7배 강화)
+    rew_scale_shoulder_default: float = -80.0  # B-v22: -30->-80 (패널티 2.7배 강화)
 
     # ─── 종료 조건 ──────────────────────────────────────────────────────
     termination_drift_m: float = 0.12        # B-v21: 유지
-    termination_shoulder_rad: float = 0.35   # B-v22: 0.50→0.35 복원 (강한 패널티로 사전 억제)
+    termination_shoulder_rad: float = 0.35   # B-v22: 0.50->0.35 복원 (강한 패널티로 사전 억제)
     termination_tilt_cos: float = -0.940
 
     # ─── 나머지 비활성 ──────────────────────────────────────────────────

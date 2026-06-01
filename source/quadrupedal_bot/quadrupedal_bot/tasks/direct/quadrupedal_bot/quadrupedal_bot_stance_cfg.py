@@ -5,21 +5,29 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v18 — termination_height 0.155→0.165m (쪼그림 차단).
+    """Stage 1: 서기 학습 B-v19 — 보상 균형 재설계 (발접지 70%→45%, 자세 9%→30%).
 
-    B-v17 분석 (iter 1446):
-      - stance_4 = 0.877 ✓ (0.80 달성), ang_vel_z = -0.011 ✓
-      - 문제: body_height=0.162m, pitch=10.2° (다시 쪼그림으로 회귀)
-      - 원인: 발 들릴 위험(-100/step) > 몸 올리는 이득(+7.8/step)
-        → 정책이 안전하게 낮게 쪼그리는 전략 선택
-      - 보상 강화만으로는 한계, 쪼그림 자체를 물리적으로 차단 필요
+    B-v18 분석 (iter 686):
+      - stance_4=0.875 ✓, body_height=0.172m ✓ (0.165m 이상 달성)
+      - 문제: pitch=14.5° (심각한 기울기)
+      - 근본 원인: foot_contact+per_leg = 91/step = 양수보상의 70% 지배
+        upright = 11.7/step = 9% 뿐 → 기울어도 발만 닿으면 손해 없음
 
-    B-v18 핵심 수정:
-      - termination_height: 0.155 → 0.165m
-        0.162m 쪼그림 자세 → 에피소드 즉시 종료!
-        0.165m 이상 유지 필수 → 정책이 다리를 뻗어야만 생존
-      - 0.165m는 적당히 뻗은 자세 (iter 126에서 0.168m 달성 확인)
-      - body_height=30, per_leg=15, foot_contact=40 유지
+    B-v19 보상 균형 재설계:
+      목표 비율 → 발접지 ~45%, 자세 ~30%, 높이 ~20%
+
+      양수 보상 (ideal 합계 ~126/step):
+        upright:      22→40  (자세 중요도 2배, 30%)
+        foot_contact: 40→20  (4발=20, 줄임)
+        per_leg:      15→10  (4발=40, 줄임) → 발접지 합 60 (47%)
+        body_height:  30→25  (줄임, 20%)
+        orientation_sigma: 0.10→0.08 (자세 민감도 증가)
+
+      음수 패널티 재조정:
+        ang_vel_xy:  -0.5→-2.0 (피치/롤 각속도 강화)
+        lin_vel_xy: -200→-50  (너무 강했음, 완화)
+        base_drift:  -60→-30  (완화)
+        shoulder:    -20→-5   (완화)
     """
 
     episode_length_s: float = 20.0
@@ -32,44 +40,43 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # === 핵심 보상: 결과 기반 ===
     rew_scale_alive: float = 1.0
 
-    # 몸통 높이 (보조적)
+    # ─── 양수 보상 (균형 재설계, ideal 합계 ~126/step) ──────────────
+    # 목표 비율: 발접지 ~45%, 자세 ~30%, 높이 ~20%
+
+    # 1) 수평 유지 (30%) — 핵심 자세 신호
+    rew_scale_upright: float = 40.0         # 22→40 (자세 중요도 2배 상승)
+    orientation_sigma: float = 0.08         # 0.10→0.08 (피치 민감도 강화)
+
+    # 2) 4발 접지 (47%, 4발 기준 60/step)
+    rew_scale_foot_contact: float = 20.0    # 40→20 (4발=20, 3발=7.5)
+    rew_scale_per_leg_contact: float = 10.0 # 15→10 (발당 10, 4발=40)
+
+    # 3) 몸통 높이 (20%)
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 30.0  # B-v17: 10→30 (쪼그림→서기 유도)
-    asymmetric_height_reward: bool = True  # 목표 이하만 패널티
+    rew_scale_body_height: float = 25.0     # 30→25
+    asymmetric_height_reward: bool = True
 
-    # 수평 유지
-    rew_scale_upright: float = 22.0
+    # ─── 음수 패널티 (균형 재조정) ─────────────────────────────────
+    rew_scale_ang_vel_z: float = -30.0      # linear yaw (유지)
+    rew_scale_ang_vel_xy: float = -2.0      # -0.5→-2.0 (피치/롤 각속도 강화)
+    rew_scale_lin_vel_xy: float = -50.0     # -200→-50 (너무 강했음, 완화)
+    rew_scale_base_drift: float = -30.0     # -60→-30 (완화)
+    rew_scale_lin_vel_z: float = -5.0       # 유지
+    rew_scale_gravity: float = -3.0         # -5→-3 (완화)
+    rew_scale_action_rate: float = -0.05    # 유지
+    rew_scale_foot_slip: float = -1.0       # -3→-1 (완화)
+    rew_scale_joint_vel: float = -1e-4      # 유지
+    rew_scale_torque: float = -1e-5         # 유지
 
-    # 4발 접지 — 지배적 보상 (4발=40, 3발=15, 1발=5)
-    # 4발(40) >> 부유(upright22+height10=32) → 발 디디는게 유리
-    rew_scale_foot_contact: float = 40.0  # B-v15: 8→40 (지배적 보상)
-
-    # === joint_match 비활성 ===
-    rew_scale_joint_match: float = 0.0  # B-v14: 완전 제거 (결과만 요구)
-
-    # === B-v16: 다리별 개별 접지 보상 ===
-    rew_scale_per_leg_contact: float = 15.0  # 발 1개당 15점, 4발=60 (선형 gradient)
-
-    # === 안정화 패널티 ===
-    rew_scale_ang_vel_z: float = -30.0     # linear 패널티 (B-v12에서 검증)
-    rew_scale_lin_vel_xy: float = -200.0   # 수평 이동 억제
-    rew_scale_base_drift: float = -60.0    # drift 억제
-    rew_scale_ang_vel_xy: float = -0.5     # 롤/피치 각속도 억제
-    rew_scale_lin_vel_z: float = -5.0      # 수직 움직임 억제
-    rew_scale_gravity: float = -5.0
-
-    # === 자세 품질 ===
-    rew_scale_action_rate: float = -0.05
-    rew_scale_foot_slip: float = -3.0
-    rew_scale_joint_vel: float = -1e-4
-    rew_scale_torque: float = -1e-5
-
-    # === 무릎 서기 차단 유지 ===
+    # 무릎 서기 차단
     rew_scale_non_foot_contact: float = -30.0
     non_foot_contact_threshold: float = 10.0
 
-    # === 어깨 패널티 (넓은 허용치로 완화) ===
-    rew_scale_shoulder_default: float = -20.0  # B-v14: 40→20 (joint_match 없으니 완화)
+    # 어깨 패널티 (완화)
+    rew_scale_shoulder_default: float = -5.0  # -20→-5
+
+    # joint_match 비활성
+    rew_scale_joint_match: float = 0.0
 
     # === 종료 조건 ===
     termination_drift_m: float = 0.08

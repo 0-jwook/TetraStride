@@ -5,19 +5,20 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v21 — 어깨 패널티 강화 + 조기종료 완화 (에피소드 완주).
+    """Stage 1: 서기 학습 B-v22 — 어깨 패널티 -30→-80 + 종료 0.50→0.35 복원.
 
-    B-v20 시각화 결과:
-      - 잘 서있다가 뒷다리가 중앙으로 모이면서 종료 발생
-      - 원인: shoulder kp=20(약함) + shoulder 패널티 -5(약함)
-              → 어깨 관절이 안쪽으로 drift → shoulder 종료 조건(0.35rad) 발동
-      - 목표: 에피소드 20초 완주
+    B-v21 시각화 결과:
+      - 조기종료 없음 ✓ (에피소드 완주 성공)
+      - 뒷다리 여전히 중앙 수렴 — -30 패널티 부족 (전체 보상의 8%뿐)
+        shoulder excess=0.161 rad → -30×0.161²×4 = -3.1/step (너무 약함)
+      - CoM 앞쏠림 — hip_FL/FR 과신장
 
-    B-v21 수정:
-      1. rew_scale_shoulder_default: -5 → -30 (어깨 수렴 강력 차단)
-      2. termination_shoulder_rad: 0.35 → 0.50 (덜 공격적인 종료)
-      3. termination_drift_m: 0.08 → 0.12 (조기종료 완화)
-      4. B-v20 곱셈 보상 구조 유지
+    B-v22 수정:
+      1. rew_scale_shoulder_default: -30 → -80 (패널티 22%로 강화)
+         excess=0.161: -80×0.161²×4 = -8.3/step (vs 이전 -3.1)
+      2. termination_shoulder_rad: 0.50 → 0.35 복원
+         강한 패널티로 0.35 이전에 억제, 극단적 수렴만 차단
+      3. 나머지 B-v21 유지
 
     B-v20 근본 수정 (사용자 제안):
       1. CoM 높이 → 각 다리 FK 뻗음 길이 (0.177m 목표)
@@ -74,11 +75,11 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
     rew_scale_non_foot_contact: float = -30.0  # 무릎 접지 차단
     non_foot_contact_threshold: float = 10.0
-    rew_scale_shoulder_default: float = -30.0  # B-v21: -5→-30 (어깨 수렴 강력 차단)
+    rew_scale_shoulder_default: float = -80.0  # B-v22: -30→-80 (패널티 2.7배 강화)
 
     # ─── 종료 조건 ──────────────────────────────────────────────────────
-    termination_drift_m: float = 0.12        # B-v21: 0.08→0.12 (조기종료 완화)
-    termination_shoulder_rad: float = 0.50   # B-v21: 0.35→0.50 (어깨 수렴 허용 폭 확대)
+    termination_drift_m: float = 0.12        # B-v21: 유지
+    termination_shoulder_rad: float = 0.35   # B-v22: 0.50→0.35 복원 (강한 패널티로 사전 억제)
     termination_tilt_cos: float = -0.940
 
     # ─── 나머지 비활성 ──────────────────────────────────────────────────

@@ -5,11 +5,19 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v20 — 각 다리 뻗음 길이 기반 곱셈 보상.
+    """Stage 1: 서기 학습 B-v21 — 어깨 패널티 강화 + 조기종료 완화 (에피소드 완주).
 
-    B-v14~B-v19 공통 문제:
-      - CoM 높이 보상: 기울어도 평균 높이 맞으면 OK → 14° 피치 허용
-      - 가산 보상: 조건 하나 나빠도 나머지로 보완 가능 → 부분점수 허용
+    B-v20 시각화 결과:
+      - 잘 서있다가 뒷다리가 중앙으로 모이면서 종료 발생
+      - 원인: shoulder kp=20(약함) + shoulder 패널티 -5(약함)
+              → 어깨 관절이 안쪽으로 drift → shoulder 종료 조건(0.35rad) 발동
+      - 목표: 에피소드 20초 완주
+
+    B-v21 수정:
+      1. rew_scale_shoulder_default: -5 → -30 (어깨 수렴 강력 차단)
+      2. termination_shoulder_rad: 0.35 → 0.50 (덜 공격적인 종료)
+      3. termination_drift_m: 0.08 → 0.12 (조기종료 완화)
+      4. B-v20 곱셈 보상 구조 유지
 
     B-v20 근본 수정 (사용자 제안):
       1. CoM 높이 → 각 다리 FK 뻗음 길이 (0.177m 목표)
@@ -66,11 +74,11 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_torque: float = -1e-5
     rew_scale_non_foot_contact: float = -30.0  # 무릎 접지 차단
     non_foot_contact_threshold: float = 10.0
-    rew_scale_shoulder_default: float = -5.0
+    rew_scale_shoulder_default: float = -30.0  # B-v21: -5→-30 (어깨 수렴 강력 차단)
 
     # ─── 종료 조건 ──────────────────────────────────────────────────────
-    termination_drift_m: float = 0.08
-    termination_shoulder_rad: float = 0.35
+    termination_drift_m: float = 0.12        # B-v21: 0.08→0.12 (조기종료 완화)
+    termination_shoulder_rad: float = 0.50   # B-v21: 0.35→0.50 (어깨 수렴 허용 폭 확대)
     termination_tilt_cos: float = -0.940
 
     # ─── 나머지 비활성 ──────────────────────────────────────────────────

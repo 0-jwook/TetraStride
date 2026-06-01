@@ -5,19 +5,23 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v25 — sigma 0.01->0.02 복원 + termination 0.145m 유지.
+    """Stage 1: 서기 학습 B-v26 — foot_alignment 보상 활성화 (앞발 앞쏠림 해결).
 
-    B-v22 최종 결과:
-      - stance_4 = 0.776 ✓, pitch = 4.48° ✓, ang_vel_z = 0.034 ✓
-      - 문제: Mean episode_length = 105 steps (~0.87초, 목표 20초)
-        term_height_ratio = 0.009 -> 높이 0.165m 이하 순간 하강마다 종료
-        1/0.009 = 111 step -> 로봇이 안정적으로 서있지만 높이 종료가 자꾸 발동
+    B-v23 시각화 결과:
+      - 앞발이 어깨 조인트보다 앞에 있다가 아래로 교정될 때
+        뒷다리가 접히며 뒤로 기울어져 넘어짐
+      - 원인: 에피소드(89 steps=0.7초)가 짧아 교정 동작을 훈련에서 경험 못함
+        -> 시각화에서 교정 시도하지만 균형 유지 못함
+      - hip 각도 0.87~0.98 rad -> 발이 어깨보다 1~2cm 앞에 위치
 
-    B-v23 수정:
-      - termination_height: 0.165 -> 0.155m (완화)
-        순간 하강 허용 폭 확대 -> 에피소드 완주 가능
-        B-v20에서 검증된 값 (0.162m에서도 안정적으로 동작)
-      - shoulder -80, 나머지 B-v22 유지
+    B-v26 수정:
+      - rew_scale_foot_alignment: 0 -> 5.0 (재활성화)
+        발이 어깨 바로 아래 있을 때 최대 보상
+        -> 처음부터 발을 올바른 위치에 두도록 학습
+        -> 교정 동작 자체가 불필요해짐
+      - sigma_foot_alignment: 0.05 (기존 값 사용)
+        hip=0.83(올바른): exp(0)=1.0, hip=0.90(1.1cm 앞): exp(-0.22)=0.80
+      - 나머지 B-v25 설정 유지
     """
 
     episode_length_s: float = 20.0
@@ -47,6 +51,10 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_body_height: float = 0.0    # CoM 높이 보상 제거 (다리 뻗음으로 대체)
     rew_scale_foot_contact: float = 0.0   # 품질의 _c_q로 대체
     rew_scale_joint_match: float = 0.0
+
+    # B-v26: 발-어깨 수직 정렬 보상 (앞발 앞쏠림 방지)
+    rew_scale_foot_alignment: float = 5.0  # 발이 어깨 바로 아래 -> 최대 보상
+    sigma_foot_alignment: float = 0.05    # 5cm 허용 오차
 
     # ─── 패널티 (안정화) ─────────────────────────────────────────────────
     rew_scale_ang_vel_z: float = -30.0    # linear yaw 억제

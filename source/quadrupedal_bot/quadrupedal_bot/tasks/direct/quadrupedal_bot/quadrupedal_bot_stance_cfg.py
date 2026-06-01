@@ -84,7 +84,6 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_per_leg_ext: float = 0.0
     rew_scale_knee_height_stance: float = 0.0
     rew_scale_knee_clearance: float = 0.0
-    rew_scale_foot_alignment: float = 0.0
     rew_scale_knee_angle: float = 0.0
     rew_scale_stand_still: float = 0.0
     rew_scale_foot_spread: float = 0.0

@@ -5,22 +5,25 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v17 — body_height 보상 3배 강화 (쪼그림→서기).
+    """Stage 1: 서기 학습 B-v18 — termination_height 0.155→0.165m (쪼그림 차단).
 
-    B-v16 결과 (iter 2298):
-      - stance_4 = 0.928 ✓✓✓, ang_vel_z = 0.037 ✓ (per-leg 효과)
-      - 문제: body_height=0.162m (쪼그린 자세로 4발 달성)
-        4발 접지는 해결, 이제 '일어서기'가 과제
+    B-v17 분석 (iter 1446):
+      - stance_4 = 0.877 ✓ (0.80 달성), ang_vel_z = -0.011 ✓
+      - 문제: body_height=0.162m, pitch=10.2° (다시 쪼그림으로 회귀)
+      - 원인: 발 들릴 위험(-100/step) > 몸 올리는 이득(+7.8/step)
+        → 정책이 안전하게 낮게 쪼그리는 전략 선택
+      - 보상 강화만으로는 한계, 쪼그림 자체를 물리적으로 차단 필요
 
-    B-v17 핵심 수정:
-      - rew_scale_body_height: 10 → 30 (3배 강화)
-        쪼그림(0.162m): 22/step, 서기(0.177m): 30/step → +8점으로 일어설 동기
-        4발 쪼그림(107) < 4발 서기(130) → 4발 유지하면서 일어서도록
-      - per_leg_contact=15, foot_contact=40 유지
+    B-v18 핵심 수정:
+      - termination_height: 0.155 → 0.165m
+        0.162m 쪼그림 자세 → 에피소드 즉시 종료!
+        0.165m 이상 유지 필수 → 정책이 다리를 뻗어야만 생존
+      - 0.165m는 적당히 뻗은 자세 (iter 126에서 0.168m 달성 확인)
+      - body_height=30, per_leg=15, foot_contact=40 유지
     """
 
     episode_length_s: float = 20.0
-    termination_height: float = 0.155  # B-v13에서 검증: 낮은 local optimum 차단
+    termination_height: float = 0.165  # B-v18: 0.155→0.165m (0.162m 쪼그림 차단)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)

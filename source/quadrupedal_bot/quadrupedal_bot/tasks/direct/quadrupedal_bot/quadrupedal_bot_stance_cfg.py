@@ -1,4 +1,5 @@
 from isaaclab.utils import configclass
+from isaaclab.sim import SimulationCfg
 
 from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
@@ -25,7 +26,13 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     """
 
     episode_length_s: float = 20.0
-    termination_height: float = 0.145  # B-v24: 0.155->0.145m (바닥 낮춤)
+    # 학습용 복원: 적당한 종료 조건과 노이즈
+    termination_height: float = 0.145
+    init_noise_scale: float = 0.03
+
+    # dt 1/200 유지 (학습 속도), solver 32 적용
+    decimation: int = 4
+    sim: SimulationCfg = SimulationCfg(dt=1 / 200, render_interval=4)
 
     cmd_lin_vel_x_range: tuple = (0.0, 0.0)
     cmd_lin_vel_y_range: tuple = (0.0, 0.0)
@@ -72,9 +79,9 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     rew_scale_shoulder_default: float = -80.0  # B-v22: -30->-80 (패널티 2.7배 강화)
 
     # ─── 종료 조건 ──────────────────────────────────────────────────────
-    termination_drift_m: float = 0.12        # B-v21: 유지
-    termination_shoulder_rad: float = 0.35   # B-v22: 0.50->0.35 복원 (강한 패널티로 사전 억제)
-    termination_tilt_cos: float = -0.940
+    termination_drift_m: float = 0.15        # 학습용: 적당히 관대
+    termination_shoulder_rad: float = 0.40   # 학습용: 어깨 수렴 차단
+    termination_tilt_cos: float = -0.940     # 학습용: 20° 한계
 
     # ─── 나머지 비활성 ──────────────────────────────────────────────────
     rew_scale_standing_quality_old: float = 0.0

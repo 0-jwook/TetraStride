@@ -1,5 +1,5 @@
 import isaaclab.sim as sim_utils
-from isaaclab.actuators import DCMotorCfg
+from isaaclab.actuators import DCMotorCfg, ImplicitActuatorCfg
 from isaaclab.assets.articulation import ArticulationCfg
 
 # Joint structure (12 DOFs):
@@ -26,7 +26,7 @@ from isaaclab.assets.articulation import ArticulationCfg
 SPOT_MICRO_CFG = ArticulationCfg(
     spawn=sim_utils.UrdfFileCfg(
         asset_path="/home/wodnr/Downloads/spot_micro_light.urdf",  # 2.5kg: hip 토크 24%, 포화 없음
-        fix_base=False,
+        fix_base=False,  # ground contact 복원
         merge_fixed_joints=True,
         root_link_name="base_link",
         joint_drive=None,
@@ -42,12 +42,12 @@ SPOT_MICRO_CFG = ArticulationCfg(
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=False,
-            solver_position_iteration_count=8,
-            solver_velocity_iteration_count=1,
+            solver_position_iteration_count=32,  # equilibrium test: 8→32 (contact resolution 강화)
+            solver_velocity_iteration_count=4,   # equilibrium test: 1→4
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.22),  # B-v13: 0.18→0.22 (높은 스폰으로 leg 완전 뻗기 유도)
+        pos=(0.0, 0.0, 0.18),  # 정확한 standing pose 높이
         joint_pos={
             ".*_shoulder": 0.0,
             ".*_leg": 0.83,
@@ -56,29 +56,27 @@ SPOT_MICRO_CFG = ArticulationCfg(
         joint_vel={".*": 0.0},
     ),
     actuators={
-        "shoulder_joints": DCMotorCfg(
+        # Option B: ImplicitActuator + 극강 PD로 0.18m 강제
+        "shoulder_joints": ImplicitActuatorCfg(
             joint_names_expr=[".*_shoulder"],
-            effort_limit=10.0,
-            saturation_effort=10.0,
-            velocity_limit=7.5,     # MG996R @6V: 7.5 rad/s (기존 6.0은 6rad/s 초과시 토크=0 버그)
-            stiffness=20.0,
-            damping=0.5,
+            effort_limit=200.0,
+            velocity_limit=20.0,
+            stiffness=500.0,
+            damping=20.0,
         ),
-        "leg_joints": DCMotorCfg(
+        "leg_joints": ImplicitActuatorCfg(
             joint_names_expr=[".*_leg"],
-            effort_limit=10.0,
-            saturation_effort=10.0,
-            velocity_limit=7.5,     # MG996R @6V: 7.5 rad/s
-            stiffness=80.0,         # v29:30 → v30:80, 중력 처짐 0.007rad으로 감소
-            damping=2.0,
+            effort_limit=200.0,
+            velocity_limit=20.0,
+            stiffness=8000.0,
+            damping=200.0,
         ),
-        "foot_joints": DCMotorCfg(
+        "foot_joints": ImplicitActuatorCfg(
             joint_names_expr=[".*_foot"],
-            effort_limit=10.0,
-            saturation_effort=10.0,
-            velocity_limit=7.5,
-            stiffness=80.0,         # v29:30 → v30:80, 역관절 주저앉음 방지 강화
-            damping=2.0,
+            effort_limit=200.0,
+            velocity_limit=20.0,
+            stiffness=8000.0,
+            damping=200.0,
         ),
     },
     soft_joint_pos_limit_factor=0.9,

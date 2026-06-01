@@ -5,7 +5,7 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v24 — sigma 0.02->0.01 + termination 0.155->0.145m.
+    """Stage 1: 서기 학습 B-v25 — sigma 0.01->0.02 복원 + termination 0.145m 유지.
 
     B-v22 최종 결과:
       - stance_4 = 0.776 ✓, pitch = 4.48° ✓, ang_vel_z = 0.034 ✓
@@ -32,7 +32,7 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
     # 4발 완전 뻗음 + 수평 + 4발 접지 -> 80/step
     # 하나라도 나쁘면 급감 (기울기 14° 시: 80×0.56=45, 다리 짧으면 추가 감소)
     target_leg_extension: float = 0.177   # FK 목표 뻗음 길이 (m)
-    sigma_leg_extension: float = 0.01     # B-v24: 0.02->0.01 (목표 높이 타이트하게)
+    sigma_leg_extension: float = 0.02     # B-v25: 0.01->0.02 복원 (B-v23 좋은 자세 유지)
     rew_scale_standing_quality: float = 80.0  # 곱셈 메인 보상
 
     # 자세 orientation_sigma: 수평 민감도

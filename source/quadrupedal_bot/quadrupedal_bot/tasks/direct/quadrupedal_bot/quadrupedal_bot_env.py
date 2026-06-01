@@ -501,13 +501,15 @@ class QuadrupedalBotEnv(DirectRLEnv):
         else:
             rew_per_leg_contact = torch.zeros(self.num_envs, device=self.device)
 
-        # Standing Quality reward (new-v14): 곱셈 소프트 AND
-        # 높이·균형·4발접촉·다리뻗음 모두 동시에 만족할 때 최대, 하나라도 나쁘면 전체 감소
-        _h_q   = (self.robot.data.root_pos_w[:, 2] / self.cfg.target_body_height).clamp(0.0, 1.0)
-        _u_q   = torch.exp(-tilt / self.cfg.orientation_sigma)
-        _c_q   = (num_contacts / 4.0).clamp(0.0, 1.0)
-        _e_q   = (_leg_ext / self.cfg.target_leg_extension).clamp(0.0, 1.0).mean(dim=1)
-        _quality = _h_q * _u_q * _c_q * _e_q
+        # B-v20: 곱셈 서기 품질 (각 다리 뻗음 × 수평 × 4발 동시 만족)
+        # CoM 높이 대신 각 다리 FK 뻗음 길이 사용 → 기울어도 속일 수 없음
+        # 짧은 다리(덜 뻗음)만 패널티, 긴 건 OK (clamp min=0)
+        _ext_err = (self.cfg.target_leg_extension - _leg_ext).clamp(min=0.0)  # [N, 4]
+        _e_q_per = torch.exp(-_ext_err / self.cfg.sigma_leg_extension)         # [N, 4]
+        _e_q = _e_q_per.mean(dim=1)                                            # [N] 4발 평균
+        _u_q = torch.exp(-tilt / self.cfg.orientation_sigma)                   # 수평 품질
+        _c_q = (num_contacts / 4.0).clamp(0.0, 1.0)                           # 4발 접지 품질
+        _quality = _e_q * _u_q * _c_q                                          # 곱셈: 모두 만족해야 최대
         rew_standing_quality = _quality * self.cfg.rew_scale_standing_quality
 
         # Foot spread penalty: 양방향 — 너무 모이거나 너무 벌어지는 것 모두 패널티

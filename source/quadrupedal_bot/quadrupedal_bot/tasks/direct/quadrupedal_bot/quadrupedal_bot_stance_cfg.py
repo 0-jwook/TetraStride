@@ -5,21 +5,18 @@ from .quadrupedal_bot_env_cfg import QuadrupedalBotEnvCfg
 
 @configclass
 class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
-    """Stage 1: 서기 학습 B-v16 — 다리별 개별 접지 보상 추가 (앞발 편중 3발 자세 차단).
+    """Stage 1: 서기 학습 B-v17 — body_height 보상 3배 강화 (쪼그림→서기).
 
-    B-v15 분석 (iter 632):
-      - stance_4 = 0.257 (개선), body_height=0.178m, ang_vel_z=0.007 ✓
-      - 문제: hip_FL/FR=1.12/1.16 (과신장), hip_RL/RR=0.36/0.40 (약신장)
-      - 앞발 2개만 땅에 딛는 3발 자세 (강아지 앉은 자세)
-      - 원인: foot_contact의 cliff(3발→4발)가 있어도 3발이 더 쉬운 local optimum
-      - 4개 다리 모두 < 형태 동일 구조 확인 (역관절 아님)
+    B-v16 결과 (iter 2298):
+      - stance_4 = 0.928 ✓✓✓, ang_vel_z = 0.037 ✓ (per-leg 효과)
+      - 문제: body_height=0.162m (쪼그린 자세로 4발 달성)
+        4발 접지는 해결, 이제 '일어서기'가 과제
 
-    B-v16 핵심 수정:
-      - rew_scale_per_leg_contact = 15 (다리별 선형 보상)
-        각 발이 독립적으로 보상 → 앞발 편중 없이 4발 모두 땅에 유도
-        4발: 40(기존) + 60(per_leg) = 100 >> 3발: 15 + 45 = 60
-        3발→4발 gradient: +40 (충분히 큰 유인)
-      - foot_contact=40, body_height=10, upright=22 유지
+    B-v17 핵심 수정:
+      - rew_scale_body_height: 10 → 30 (3배 강화)
+        쪼그림(0.162m): 22/step, 서기(0.177m): 30/step → +8점으로 일어설 동기
+        4발 쪼그림(107) < 4발 서기(130) → 4발 유지하면서 일어서도록
+      - per_leg_contact=15, foot_contact=40 유지
     """
 
     episode_length_s: float = 20.0
@@ -34,8 +31,8 @@ class QuadrupedalBotStanceCfg(QuadrupedalBotEnvCfg):
 
     # 몸통 높이 (보조적)
     target_body_height: float = 0.177
-    rew_scale_body_height: float = 10.0  # B-v15: 20→10 (보조)
-    asymmetric_height_reward: bool = True  # 목표 이하만 패널티 (공중 부유 억제 안 함)
+    rew_scale_body_height: float = 30.0  # B-v17: 10→30 (쪼그림→서기 유도)
+    asymmetric_height_reward: bool = True  # 목표 이하만 패널티
 
     # 수평 유지
     rew_scale_upright: float = 22.0
